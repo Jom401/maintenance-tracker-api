@@ -1,1 +1,1 @@
-web: python -m gunicorn server:app
+web: pip install gunicorn && gunicorn server:app
