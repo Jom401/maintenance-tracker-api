@@ -1,0 +1,2596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maintenance Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0f0f0f;
+  --surface: #181818;
+  --surface2: #222222;
+  --border: #2a2a2a;
+  --border2: #333333;
+  --text: #f0ede8;
+  --text2: #888880;
+  --text3: #555550;
+  --accent: #c8f060;
+  --accent-dim: rgba(200,240,96,0.12);
+  --red: #ff5f5f;
+  --amber: #ffb84d;
+  --green: #5fdd9d;
+  --blue: #60b8ff;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;line-height:1.5}
+::selection{background:var(--accent);color:#000}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+/* ── Layout ── */
+.app{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:200px;min-width:200px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0}
+.sidebar-logo{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.sidebar-logo span{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--text2)}
+.sidebar-logo strong{display:block;font-size:15px;font-weight:600;color:var(--text);letter-spacing:-.01em;margin-top:2px}
+.sidebar-nav{padding:12px 8px;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius);cursor:pointer;color:var(--text2);font-size:13px;font-weight:400;transition:all .15s;margin-bottom:2px;border:1px solid transparent}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.7}
+.nav-item:hover{color:var(--text);background:var(--surface2)}
+.nav-item.active{color:var(--accent);background:var(--accent-dim);border-color:rgba(200,240,96,.2)}
+.nav-item.active svg{opacity:1}
+.sidebar-footer{padding:12px 8px;border-top:1px solid var(--border)}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.topbar{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg);position:sticky;top:0;z-index:10}
+.topbar-title{font-size:16px;font-weight:500;letter-spacing:-.01em}
+.topbar-sub{font-size:12px;color:var(--text2);font-family:var(--mono)}
+.content{padding:24px;flex:1}
+
+/* ── Components ── */
+.btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-family:var(--sans)}
+.btn:hover{border-color:var(--border2);background:var(--surface);color:var(--text)}
+.btn-accent{background:var(--accent);color:#000;border-color:var(--accent)}
+.btn-accent:hover{background:#d4f570;border-color:#d4f570}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--text2)}
+.btn-ghost:hover{background:var(--surface2);color:var(--text);border-color:var(--border)}
+.btn-sm{height:28px;padding:0 10px;font-size:12px}
+.btn svg{width:14px;height:14px}
+
+select,input[type=text],input[type=number],textarea{
+  background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);
+  color:var(--text);font-family:var(--sans);font-size:13px;padding:0 10px;height:34px;
+  outline:none;transition:border .15s;width:100%
+}
+select:focus,input:focus,textarea:focus{border-color:var(--accent)}
+textarea{height:auto;padding:8px 10px;resize:vertical}
+label{font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--text2);display:block;margin-bottom:5px}
+.form-group{display:flex;flex-direction:column;min-width:0}
+.form-row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:12px}
+.card-title{font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:12px}
+
+/* metrics */
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:20px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px}
+.metric-val{font-size:26px;font-weight:600;font-family:var(--mono);letter-spacing:-.02em;line-height:1}
+.metric-lbl{font-size:11px;color:var(--text2);margin-top:4px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em}
+.metric-val.green{color:var(--green)}
+.metric-val.amber{color:var(--amber)}
+.metric-val.red{color:var(--red)}
+
+/* table */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 12px;color:var(--text3);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);font-weight:400}
+td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr.clickable{cursor:pointer}
+tr.clickable:hover td{background:var(--surface2)}
+
+/* badges */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;font-family:var(--mono)}
+.badge-green{background:rgba(95,221,157,.12);color:var(--green);border:1px solid rgba(95,221,157,.25)}
+.badge-amber{background:rgba(255,184,77,.12);color:var(--amber);border:1px solid rgba(255,184,77,.25)}
+.badge-gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+.badge-red{background:rgba(255,95,95,.12);color:var(--red);border:1px solid rgba(255,95,95,.25)}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:11px;font-family:var(--mono);background:var(--surface2);color:var(--text2);border:1px solid var(--border);margin:1px}
+.side-tag{font-size:10px;padding:1px 4px;border-radius:3px;background:rgba(96,184,255,.12);color:var(--blue);border:1px solid rgba(96,184,255,.2);margin-left:3px;font-family:var(--mono)}
+
+/* progress bar */
+.prog{height:4px;border-radius:2px;background:var(--surface2);overflow:hidden}
+.prog-fill{height:100%;border-radius:2px;transition:width .3s}
+
+/* set grid */
+.set-grid{display:grid;grid-template-columns:60px repeat(3,1fr) 60px;gap:8px;align-items:center;margin-bottom:8px}
+.set-hdr{display:grid;grid-template-columns:60px repeat(3,1fr) 60px;gap:8px;font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:6px}
+.set-inner{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+
+/* toast */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:10px 16px;font-size:13px;color:var(--text);opacity:0;transform:translateY(6px);transition:all .25s;pointer-events:none;z-index:999;font-family:var(--mono)}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{border-color:rgba(95,221,157,.4);color:var(--green)}
+.toast.error{border-color:rgba(255,95,95,.4);color:var(--red)}
+
+/* divider */
+hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+
+/* back */
+.back-btn{display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--text2);cursor:pointer;font-size:13px;font-family:var(--sans);padding:0;margin-bottom:16px}
+.back-btn:hover{color:var(--text)}
+.back-btn svg{width:14px;height:14px}
+
+/* auth overlay */
+.auth-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:100;flex-direction:column;gap:16px}
+.auth-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:32px;width:340px;text-align:center}
+.auth-card h2{font-size:18px;font-weight:500;margin-bottom:6px}
+.auth-card p{color:var(--text2);font-size:13px;margin-bottom:20px}
+
+/* config modal */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius-lg);padding:24px;width:480px;max-width:90vw;max-height:90vh;overflow-y:auto}
+.modal h2{font-size:16px;font-weight:500;margin-bottom:4px}
+.modal p{color:var(--text2);font-size:13px;margin-bottom:16px;line-height:1.6}
+.modal-step{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;font-size:12px;line-height:1.7;color:var(--text2)}
+.modal-step code{font-family:var(--mono);color:var(--accent);background:var(--surface2);padding:1px 5px;border-radius:3px;font-size:11px}
+.modal-step strong{color:var(--text)}
+
+/* import zone */
+.drop-zone{border:2px dashed var(--border2);border-radius:var(--radius-lg);padding:32px;text-align:center;cursor:pointer;transition:all .2s;color:var(--text2)}
+.drop-zone:hover,.drop-zone.drag{border-color:var(--accent);color:var(--text);background:var(--accent-dim)}
+.drop-zone svg{width:32px;height:32px;margin:0 auto 10px;display:block;opacity:.5}
+.drop-zone input{display:none}
+
+/* progression suggestion */
+.prog-suggestion{display:flex;align-items:flex-start;gap:10px;background:rgba(200,240,96,.07);border:1px solid rgba(200,240,96,.2);border-radius:var(--radius);padding:10px 12px;margin-bottom:12px}
+.prog-suggestion.same{background:rgba(96,184,255,.07);border-color:rgba(96,184,255,.2)}
+.prog-suggestion.band{background:rgba(255,184,77,.07);border-color:rgba(255,184,77,.2)}
+.prog-icon{font-size:16px;line-height:1;flex-shrink:0;margin-top:1px}
+.prog-label{font-size:12px;font-family:var(--mono);font-weight:500;margin-bottom:2px}
+.prog-label.up{color:var(--accent)}
+.prog-label.same{color:var(--blue)}
+.prog-label.band{color:var(--amber)}
+.prog-detail{font-size:11px;color:var(--text2);line-height:1.5}
+.prog-apply{margin-left:auto;flex-shrink:0}
+
+/* status dot */
+.dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot-green{background:var(--green)}
+.dot-amber{background:var(--amber)}
+.dot-red{background:var(--red)}
+.dot-gray{background:var(--text3)}
+
+/* spinner */
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin 1s linear infinite;display:inline-block}
+.spinner{width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+
+/* scrollbar */
+.view{display:none}.view.active{display:block}
+
+/* responsive */
+@media(max-width:600px){
+  .sidebar{width:52px;min-width:52px}
+  .sidebar-logo,.nav-item span,.sidebar-footer{display:none}
+  .nav-item{justify-content:center;padding:10px}
+  .content{padding:16px}
+}
+</style>
+</head>
+<body>
+
+<!-- ── CONFIG ──────────────────────────────────────────────── -->
+<script>
+// ╔══════════════════════════════════════════════════════════╗
+// ║  CONFIGURATION — fill these in after Google setup        ║
+// ╚══════════════════════════════════════════════════════════╝
+const CONFIG = {
+  // From Google Cloud Console → Credentials → OAuth 2.0 Client ID
+  CLIENT_ID: 'YOUR_CLIENT_ID.apps.googleusercontent.com',
+  // The ID of your Google Sheet (from the URL)
+  SHEET_ID: 'YOUR_SHEET_ID',
+  // Anthropic API key (for PDF import parsing)
+  ANTHROPIC_KEY: 'YOUR_ANTHROPIC_API_KEY',
+  // Your Render server URL (no trailing slash)
+  // e.g. 'https://maintenance-tracker-api.onrender.com'
+  RENDER_URL: 'YOUR_RENDER_URL',
+};
+
+const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+const SHEET_SESSIONS = 'Sessions';
+const SHEET_ATHLETES = 'Athletes';
+</script>
+
+<!-- ── APP SHELL ───────────────────────────────────────────── -->
+<div class="app" id="app" style="display:none">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <span>Maintenance</span>
+      <strong>Tracker</strong>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-item active" onclick="nav('log')" id="nav-log">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><path d="M9 12h6M9 16h4"/></svg>
+        <span>Log session</span>
+      </div>
+      <div class="nav-item" onclick="nav('dashboard')" id="nav-dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span>Dashboard</span>
+      </div>
+      <div class="nav-item" onclick="nav('import')" id="nav-import">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+        <span>Import PDF</span>
+      </div>
+      <div class="nav-item" onclick="nav('weekly')" id="nav-weekly">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+        <span>Weekly sheets</span>
+      </div>
+      <div class="nav-item" onclick="nav('athletes')" id="nav-athletes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        <span>Athletes</span>
+      </div>
+      <div class="nav-item" onclick="nav('progression')" id="nav-progression">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        <span>Progression</span>
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="nav-item btn-ghost" onclick="showConfig()" style="font-size:12px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        <span>Setup</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- LOG SESSION -->
+    <div id="view-log" class="view active">
+      <div class="topbar">
+        <div><div class="topbar-title">Log session</div><div class="topbar-sub" id="log-status">Select an athlete to begin</div></div>
+        <button class="btn btn-accent" onclick="saveSession()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Save session
+        </button>
+      </div>
+      <div class="content">
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group" style="flex:2;min-width:160px">
+              <label>Athlete</label>
+              <select id="log-athlete" onchange="onAthleteChange()"><option value="">— select —</option></select>
+            </div>
+            <div class="form-group" style="flex:1;min-width:130px">
+              <label>Protocol</label>
+              <select id="log-protocol" onchange="onProtocolChange()"></select>
+            </div>
+            <div class="form-group" style="width:80px">
+              <label>Day</label>
+              <select id="log-day" onchange="renderExercises()"><option value="1">Day 1</option><option value="2">Day 2</option></select>
+            </div>
+            <div class="form-group" style="width:110px">
+              <label>Side</label>
+              <select id="log-side">
+                <option value="bilateral">Bilateral</option>
+                <option value="right">Right</option>
+                <option value="left">Left</option>
+              </select>
+            </div>
+            <div class="form-group" style="width:90px">
+              <label>Date</label>
+              <input type="text" id="log-date" placeholder="MM/DD">
+            </div>
+          </div>
+        </div>
+        <div id="exercises-container"></div>
+        <div class="form-row" style="margin-top:4px">
+          <div class="form-group" style="width:90px">
+            <label>Staff initials</label>
+            <input type="text" id="log-initials" maxlength="6" placeholder="JD">
+          </div>
+          <div class="form-group" style="flex:1;min-width:200px">
+            <label>Notes</label>
+            <input type="text" id="log-notes" placeholder="Optional observations">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="view-dashboard" class="view">
+      <div id="dash-detail" style="display:none">
+        <div class="topbar">
+          <div><button class="back-btn" onclick="closeDashDetail()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg> Back</button></div>
+        </div>
+        <div class="content" id="dash-detail-content"></div>
+      </div>
+      <div id="dash-main">
+        <div class="topbar">
+          <div><div class="topbar-title">Dashboard</div><div class="topbar-sub" id="dash-sync-label">—</div></div>
+          <button class="btn" onclick="loadFromSheets()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Refresh</button>
+        </div>
+        <div class="content">
+          <div class="metrics" id="dash-metrics"></div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:flex-end">
+            <div class="form-group" style="flex:1;min-width:160px">
+              <label>Search</label>
+              <input type="text" id="dash-search" placeholder="Athlete name…" oninput="renderDashTable()">
+            </div>
+            <div class="form-group" style="width:140px">
+              <label>Protocol</label>
+              <select id="dash-proto" onchange="renderDashTable()">
+                <option value="">All</option>
+                <option value="hamstring">Hamstring</option>
+                <option value="groin">Groin</option>
+                <option value="patellar">Quad</option>
+                <option value="shoulder">Shoulder</option>
+              </select>
+            </div>
+            <div class="form-group" style="width:140px">
+              <label>Status</label>
+              <select id="dash-status" onchange="renderDashTable()">
+                <option value="">All</option>
+                <option value="on-track">On track</option>
+                <option value="needs-attention">Needs attention</option>
+                <option value="no-sessions">No sessions</option>
+              </select>
+            </div>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Athlete</th><th>Protocols</th><th>Sessions</th><th>Last session</th><th>This week</th><th>Status</th>
+              </tr></thead>
+              <tbody id="dash-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT PDF -->
+    <div id="view-import" class="view">
+      <div class="topbar">
+        <div><div class="topbar-title">Import scanned PDF</div><div class="topbar-sub">Upload weekly scan → extract data → write to sheet</div></div>
+      </div>
+      <div class="content" style="max-width:640px">
+        <div class="card">
+          <div class="card-title">Upload PDF</div>
+          <div class="drop-zone" id="drop-zone" onclick="document.getElementById('pdf-input').click()">
+            <input type="file" id="pdf-input" accept=".pdf" onchange="handlePdfUpload(event)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            <div style="font-size:13px;font-weight:500;margin-bottom:4px">Drop PDF here or click to browse</div>
+            <div style="font-size:12px">Scanned weekly maintenance sheets</div>
+          </div>
+        </div>
+
+        <div id="import-progress" style="display:none">
+          <div class="card">
+            <div class="card-title">Extracting data</div>
+            <div id="import-log" style="font-family:var(--mono);font-size:12px;color:var(--text2);line-height:2;max-height:240px;overflow-y:auto"></div>
+          </div>
+        </div>
+
+        <div id="import-preview" style="display:none">
+          <div class="card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+              <div class="card-title" style="margin:0">Extracted sessions</div>
+              <button class="btn btn-accent btn-sm" onclick="commitImport()">Write to sheet</button>
+            </div>
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>Athlete</th><th>Protocol</th><th>Day</th><th>Date</th><th>Ex 1 set 1</th><th>RIR</th><th>Staff</th></tr></thead>
+                <tbody id="import-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- WEEKLY SHEETS -->
+    <div id="view-weekly" class="view">
+      <div class="topbar">
+        <div><div class="topbar-title">Weekly sheets</div><div class="topbar-sub">Generate pre-filled printable sheets based on last session data</div></div>
+        <button class="btn btn-accent" onclick="generateWeeklyDoc()" id="gen-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+          Download PDF
+        </button>
+      </div>
+      <div class="content" style="max-width:720px">
+        <div class="card">
+          <div class="card-title">Week of</div>
+          <div class="form-row">
+            <div class="form-group" style="width:140px">
+              <label>Week start date</label>
+              <input type="text" id="week-date" placeholder="MM/DD/YYYY">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label>Filter by protocol (optional)</label>
+              <select id="week-proto-filter" onchange="renderWeeklyPreview()">
+                <option value="">All protocols</option>
+                <option value="hamstring">Hamstring only</option>
+                <option value="groin">Groin only</option>
+                <option value="patellar">Quad only</option>
+                <option value="shoulder">Shoulder only</option>
+              </select>
+            </div>
+            <div class="form-group" style="justify-content:flex-end;padding-top:4px">
+              <label style="display:flex;align-items:center;gap:7px;color:var(--color-text-primary);font-family:var(--font-sans);text-transform:none;letter-spacing:0;font-size:13px;cursor:pointer;margin-top:18px">
+                <input type="checkbox" id="week-blank" onchange="renderWeeklyPreview()">
+                Blank sheets (Week 1 — no pre-fill)
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Progression preview</div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr>
+                <th>Athlete</th><th>Protocol</th><th>Exercise</th><th>Last wt / band</th><th>Suggested</th><th>Rep target</th><th>Status</th>
+              </tr></thead>
+              <tbody id="weekly-preview-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROGRESSION SETTINGS -->
+    <div id="view-progression" class="view">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">Progression rules</div>
+          <div class="topbar-sub">Adjust criteria for each exercise — changes apply immediately to session logging and weekly sheets</div>
+        </div>
+        <button class="btn btn-accent" onclick="saveProgRules()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="20 6 9 17 4 12"/></svg>
+          Save changes
+        </button>
+      </div>
+      <div class="content">
+
+        <!-- Global thresholds -->
+        <div class="card" style="margin-bottom:20px">
+          <div class="card-title">Global thresholds</div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>RIR threshold to progress</label>
+              <select id="prog-rir-threshold" style="width:120px">
+                <option value="1">RIR ≥ 1</option>
+                <option value="2">RIR ≥ 2</option>
+                <option value="3" selected>RIR ≥ 3</option>
+                <option value="4">RIR ≥ 4</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Sets needed to progress</label>
+              <select id="prog-sets-needed" style="width:140px">
+                <option value="1">At least 1 of 3</option>
+                <option value="2" selected>2 of 3 sets</option>
+                <option value="3">All 3 sets</option>
+              </select>
+            </div>
+            <div class="form-group" style="flex:1">
+              <label>Band color sequence</label>
+              <input type="text" id="prog-band-seq" value="yellow, red, green, blue, black, silver, gold" style="font-family:var(--mono);font-size:12px">
+            </div>
+          </div>
+        </div>
+
+        <!-- Per-exercise rules -->
+        <div id="prog-rules-container"></div>
+
+        <p style="font-size:12px;color:var(--color-text-tertiary);margin-top:8px">
+          Changes are saved locally in this browser. If you're using Google Sheets sync, rules are stored in the app only.
+        </p>
+      </div>
+    </div>
+      <div class="topbar">
+        <div><div class="topbar-title">Athletes <span id="athlete-count" style="color:var(--text2);font-weight:400"></span></div></div>
+        <button class="btn" onclick="syncAthletesToSheet()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg> Sync to sheet</button>
+      </div>
+      <div class="content">
+        <div class="card">
+          <div class="form-row">
+            <div class="form-group" style="flex:1;min-width:150px"><label>Name</label><input type="text" id="new-name" placeholder="Full name" onkeydown="if(event.key==='Enter')addAthlete()"></div>
+            <div class="form-group" style="flex:1;min-width:200px">
+              <label>Protocols</label>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;padding-top:6px">
+                <label style="display:flex;align-items:center;gap:5px;color:var(--text);font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="np-ham"> Hamstring</label>
+                <label style="display:flex;align-items:center;gap:5px;color:var(--text);font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="np-groin"> Groin</label>
+                <label style="display:flex;align-items:center;gap:5px;color:var(--text);font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="np-pat"> Patellar</label>
+                <label style="display:flex;align-items:center;gap:5px;color:var(--text);font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:13px"><input type="checkbox" id="np-sho"> Shoulder</label>
+              </div>
+            </div>
+            <button class="btn btn-accent" onclick="addAthlete()" style="align-self:flex-end">Add</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table><thead><tr><th>Name</th><th>Protocols</th><th>Sessions</th><th></th></tr></thead>
+          <tbody id="athletes-tbody"></tbody></table>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Auth overlay -->
+<div class="auth-overlay" id="auth-overlay">
+  <div class="auth-card">
+    <h2>Maintenance Tracker</h2>
+    <p>Sign in with Google to access your team's data in Google Sheets.</p>
+    <button class="btn btn-accent" style="width:100%;justify-content:center" onclick="signIn()">
+      <svg width="16" height="16" viewBox="0 0 24 24"><path fill="currentColor" d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"/></svg>
+      Sign in with Google
+    </button>
+  </div>
+  <p style="color:var(--text3);font-size:12px;font-family:var(--mono)">ATC staff only · Data stored in your Google Sheet</p>
+</div>
+
+<!-- Config modal -->
+<div class="modal-bg" id="config-modal" style="display:none" onclick="if(event.target===this)hideConfig()">
+  <div class="modal">
+    <h2>Setup guide</h2>
+    <p>Follow these steps once to connect the app to your Google Sheet. You only do this once.</p>
+
+    <div class="modal-step">
+      <strong>Step 1 — Create a Google Sheet</strong><br>
+      Go to <code>sheets.google.com</code> → New spreadsheet. Name it "Maintenance Tracker".<br>
+      Copy the ID from the URL: <code>docs.google.com/spreadsheets/d/<strong>[THIS PART]</strong>/edit</code><br>
+      Paste it into <code>CONFIG.SHEET_ID</code> in this file.
+    </div>
+
+    <div class="modal-step">
+      <strong>Step 2 — Enable the Sheets API</strong><br>
+      Go to <code>console.cloud.google.com</code> → New project → APIs & Services → Enable APIs.<br>
+      Search for "Google Sheets API" and enable it.<br>
+      Also enable "Google Identity Services".
+    </div>
+
+    <div class="modal-step">
+      <strong>Step 3 — Create OAuth credentials</strong><br>
+      APIs & Services → Credentials → Create Credentials → OAuth 2.0 Client ID.<br>
+      Application type: <code>Web application</code>.<br>
+      Authorized JavaScript origins: add your hosting URL (e.g. <code>https://yourteam.github.io</code>).<br>
+      Copy the Client ID → paste into <code>CONFIG.CLIENT_ID</code>.
+    </div>
+
+    <div class="modal-step">
+      <strong>Step 4 — Deploy the Render API server</strong><br>
+      Push the <code>render-server/</code> folder to a GitHub repo.<br>
+      Go to <code>render.com</code> → New Web Service → connect your repo.<br>
+      Add environment variable: <code>ANTHROPIC_API_KEY</code> = your key from <code>console.anthropic.com</code>.<br>
+      After deploy, copy your Render URL (e.g. <code>https://maintenance-tracker-api.onrender.com</code>).<br>
+      Paste it into <code>CONFIG.RENDER_URL</code> in this file.
+    </div>
+
+    <div class="modal-step">
+      <strong>Step 5 — Host the file</strong><br>
+      Upload <code>tracker.html</code> to GitHub Pages, Netlify, or your own server.<br>
+      Share the URL with ATC staff — that's it.
+    </div>
+
+    <button class="btn" onclick="hideConfig()" style="margin-top:8px;width:100%;justify-content:center">Close</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Google Identity Services -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js"></script>
+
+
+<script>
+// ── PROTOCOLS ────────────────────────────────────────────────
+const PROTOCOLS = {
+  hamstring: { label:'Hamstring', exercises:['Hamstring gliders','Eccentric hamstring curl (2 up, 1 down)'] },
+  groin:     { label:'Groin',     exercises:['Isometric @ 0°','Valslider diagonal','Valslider horizontal'] },
+  patellar:  { label:'Quad', exercises:['60° knee extension isometric','Wall sit (DL or SL)'] },
+  shoulder:  { label:'Shoulder',  exercises:['OH kettlebell carry','Serratus press away','Banded I-Y-T circles'] }
+};
+const SIDE_MAP = { B:'bilateral', R:'right', L:'left' };
+
+// ── STATE ────────────────────────────────────────────────────
+let athletes = [];
+let sessions  = [];
+let importedSessions = [];
+let tokenClient;
+let accessToken = null;
+
+// ── GOOGLE AUTH ──────────────────────────────────────────────
+function initGoogleAuth() {
+  if (CONFIG.CLIENT_ID === 'YOUR_CLIENT_ID.apps.googleusercontent.com') {
+    // Demo mode — skip auth
+    document.getElementById('auth-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    loadDemoData();
+    return;
+  }
+  gapi.load('client', async () => {
+    await gapi.client.init({ discoveryDocs: ['https://sheets.googleapis.com/$discovery/rest?version=v4'] });
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CONFIG.CLIENT_ID,
+      scope: SCOPES,
+      callback: async (resp) => {
+        if (resp.error) { toast('Auth error: ' + resp.error, 'error'); return; }
+        accessToken = resp.access_token;
+        document.getElementById('auth-overlay').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        await initSheets();
+        await loadFromSheets();
+      }
+    });
+  });
+}
+
+function signIn() { tokenClient.requestAccessToken({ prompt: 'consent' }); }
+
+// ── SHEETS INIT ──────────────────────────────────────────────
+async function initSheets() {
+  // Ensure both tabs exist
+  const meta = await sheetsGet(`spreadsheets/${CONFIG.SHEET_ID}?fields=sheets.properties.title`);
+  const titles = meta.sheets.map(s => s.properties.title);
+  const requests = [];
+  if (!titles.includes(SHEET_ATHLETES))
+    requests.push({ addSheet: { properties: { title: SHEET_ATHLETES } } });
+  if (!titles.includes(SHEET_SESSIONS))
+    requests.push({ addSheet: { properties: { title: SHEET_SESSIONS } } });
+  if (requests.length)
+    await sheetsPost(`spreadsheets/${CONFIG.SHEET_ID}:batchUpdate`, { requests });
+
+  // Write headers if sheets are empty
+  const athData = await sheetsGet(`spreadsheets/${CONFIG.SHEET_ID}/values/${SHEET_ATHLETES}!A1:F1`);
+  if (!athData.values) {
+    await sheetsPut(`spreadsheets/${CONFIG.SHEET_ID}/values/${SHEET_ATHLETES}!A1`, {
+      values: [['id','name','protocols','shoulderSide','kneeSide','addedAt']]
+    });
+    // Seed with roster
+    await seedAthletes();
+  }
+  const sessData = await sheetsGet(`spreadsheets/${CONFIG.SHEET_ID}/values/${SHEET_SESSIONS}!A1:A1`);
+  if (!sessData.values) {
+    await sheetsPut(`spreadsheets/${CONFIG.SHEET_ID}/values/${SHEET_SESSIONS}!A1`, {
+      values: [['id','athleteId','athleteName','protocol','day','side','date','initials','notes',
+                'ex0_s1_wt','ex0_s1_reps','ex0_s2_wt','ex0_s2_reps','ex0_s3_wt','ex0_s3_reps','ex0_rir',
+                'ex1_s1_wt','ex1_s1_reps','ex1_s2_wt','ex1_s2_reps','ex1_s3_wt','ex1_s3_reps','ex1_rir',
+                'ex2_s1_wt','ex2_s1_reps','ex2_s2_wt','ex2_s2_reps','ex2_s3_wt','ex2_s3_reps','ex2_rir',
+                'source','ts']]
+    });
+  }
+}
+
+// ── SHEETS API HELPERS ────────────────────────────────────────
+async function sheetsGet(path) {
+  const r = await fetch(`https://sheets.googleapis.com/v4/${path}`,
+    { headers: { Authorization: `Bearer ${accessToken}` } });
+  return r.json();
+}
+async function sheetsPut(path, body) {
+  return fetch(`https://sheets.googleapis.com/v4/${path}?valueInputOption=RAW`,
+    { method:'PUT', headers:{ Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
+      body: JSON.stringify(body) }).then(r=>r.json());
+}
+async function sheetsAppend(range, values) {
+  return fetch(`https://sheets.googleapis.com/v4/spreadsheets/${CONFIG.SHEET_ID}/values/${range}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    { method:'POST', headers:{ Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
+      body: JSON.stringify({ values }) }).then(r=>r.json());
+}
+async function sheetsPost(path, body) {
+  return fetch(`https://sheets.googleapis.com/v4/${path}`,
+    { method:'POST', headers:{ Authorization:`Bearer ${accessToken}`, 'Content-Type':'application/json' },
+      body: JSON.stringify(body) }).then(r=>r.json());
+}
+
+// ── LOAD FROM SHEETS ─────────────────────────────────────────
+async function loadFromSheets() {
+  document.getElementById('dash-sync-label').textContent = 'Loading…';
+  try {
+    const [athRes, sessRes] = await Promise.all([
+      sheetsGet(`spreadsheets/${CONFIG.SHEET_ID}/values/${SHEET_ATHLETES}!A2:F`),
+      sheetsGet(`spreadsheets/${CONFIG.SHEET_ID}/values/${SHEET_SESSIONS}!A2:Z`)
+    ]);
+    athletes = (athRes.values || []).map(r => ({
+      id: r[0], name: r[1], protocols: (r[2]||'').split(',').filter(Boolean),
+      shoulderSide: r[3]||null, kneeSide: r[4]||null
+    }));
+    sessions = (sessRes.values || []).map(r => ({
+      id:r[0], athleteId:r[1], athleteName:r[2], protocol:r[3], day:r[4],
+      side:r[5], date:r[6], initials:r[7], notes:r[8],
+      exerciseData: parseExerciseCols(r),
+      ts: parseInt(r[r.length-1]||0)
+    }));
+    refreshAll();
+    document.getElementById('dash-sync-label').textContent = 'Last sync: ' + new Date().toLocaleTimeString();
+  } catch(e) {
+    toast('Could not load from Sheets', 'error');
+    document.getElementById('dash-sync-label').textContent = 'Sync failed';
+  }
+}
+
+function parseExerciseCols(r) {
+  const exs = [];
+  for (let e = 0; e < 3; e++) {
+    const base = 9 + e * 7;
+    exs.push({ sets: [
+      { wt: parseFloat(r[base])||null, reps: parseInt(r[base+1])||null },
+      { wt: parseFloat(r[base+2])||null, reps: parseInt(r[base+3])||null },
+      { wt: parseFloat(r[base+4])||null, reps: parseInt(r[base+5])||null },
+    ], rir: parseInt(r[base+6])||null });
+  }
+  return exs;
+}
+
+// ── SEED ATHLETES ────────────────────────────────────────────
+const ROSTER = [
+    {id:"1000",name:"Adolf",protocols:["hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"R"},
+    {id:"1001",name:"Akih",protocols:["shoulder", "groin", "hamstring"],shoulderSide:"L",kneeSide:null,hamstringSide:"R"},
+    {id:"1002",name:"Alford",protocols:["shoulder"],shoulderSide:"L",kneeSide:null,hamstringSide:null},
+    {id:"1003",name:"Alliegro",protocols:["groin", "hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"L"},
+    {id:"1004",name:"Armstrong D.",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1005",name:"Atkinson",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1006",name:"Baudo",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1007",name:"Beal",protocols:["shoulder", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"L"},
+    {id:"1008",name:"Bell",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1009",name:"Bey",protocols:["shoulder", "groin", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1010",name:"Bing",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1011",name:"Boyd",protocols:["shoulder", "patellar"],shoulderSide:"R",kneeSide:"B",hamstringSide:null},
+    {id:"1012",name:"Bradford",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1013",name:"Brede",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1014",name:"Caldwell",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1015",name:"Calhoun",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1016",name:"Christian",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1017",name:"Cook",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1018",name:"Daniels",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1019",name:"DelSignore",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1020",name:"Fahey",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1021",name:"Gebhardt",protocols:["shoulder", "groin", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1022",name:"Geibel",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1023",name:"Goines-Jackson",protocols:["hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"L"},
+    {id:"1024",name:"Gough",protocols:["groin", "hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"R"},
+    {id:"1025",name:"Grady",protocols:["shoulder", "groin", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1026",name:"Greer",protocols:["shoulder", "groin"],shoulderSide:"R",kneeSide:null,hamstringSide:null},
+    {id:"1027",name:"Guilford",protocols:["shoulder", "patellar", "groin", "hamstring"],shoulderSide:"B",kneeSide:"B",hamstringSide:"R"},
+    {id:"1028",name:"Gwinn",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1029",name:"Hawkins",protocols:["groin", "hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"L"},
+    {id:"1030",name:"Henry Jr",protocols:["shoulder", "patellar", "groin"],shoulderSide:"B",kneeSide:"B",hamstringSide:null},
+    {id:"1031",name:"Hinzman",protocols:[],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1032",name:"Houston",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1033",name:"Howard",protocols:["shoulder", "groin", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1034",name:"Inniss",protocols:["groin", "hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"R"},
+    {id:"1035",name:"Jackson Bo",protocols:["shoulder"],shoulderSide:"L",kneeSide:null,hamstringSide:null},
+    {id:"1036",name:"Jackson Ja'Kobi",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1037",name:"Jackson Jr., KJ",protocols:["shoulder", "patellar"],shoulderSide:"R",kneeSide:"B",hamstringSide:null},
+    {id:"1038",name:"Jenkins",protocols:["shoulder", "patellar"],shoulderSide:"R",kneeSide:"B",hamstringSide:null},
+    {id:"1039",name:"Johnson",protocols:["shoulder"],shoulderSide:"L",kneeSide:null,hamstringSide:null},
+    {id:"1040",name:"Jones B.",protocols:["shoulder"],shoulderSide:"L",kneeSide:null,hamstringSide:null},
+    {id:"1041",name:"Jones D.",protocols:["groin", "hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"R"},
+    {id:"1042",name:"Kelly",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1043",name:"Lautar",protocols:["shoulder", "patellar"],shoulderSide:"B",kneeSide:"R",hamstringSide:null},
+    {id:"1044",name:"LeBlanc",protocols:["groin", "hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"R"},
+    {id:"1045",name:"Lee",protocols:["hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"R"},
+    {id:"1046",name:"Lennon",protocols:["groin", "hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"R"},
+    {id:"1047",name:"Little Jr",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1048",name:"Lockhart",protocols:["groin", "hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"L"},
+    {id:"1049",name:"Lorentz",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1050",name:"Lowe",protocols:["shoulder", "patellar"],shoulderSide:"B",kneeSide:"B",hamstringSide:null},
+    {id:"1051",name:"Martin",protocols:["shoulder", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"L"},
+    {id:"1052",name:"Matthews Jr.",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1053",name:"McClain",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1054",name:"McCuin",protocols:["hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"R"},
+    {id:"1055",name:"McKinley",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1056",name:"Mcallister",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1057",name:"Miller",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1058",name:"Montgomery",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1059",name:"Moore I.",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1060",name:"Moore J.",protocols:["shoulder", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1061",name:"Moore T.",protocols:["shoulder", "groin"],shoulderSide:"R",kneeSide:null,hamstringSide:null},
+    {id:"1062",name:"Padilla",protocols:["shoulder", "groin"],shoulderSide:"R",kneeSide:null,hamstringSide:null},
+    {id:"1063",name:"Parker",protocols:["shoulder", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1064",name:"Perez",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1065",name:"Peterson",protocols:[],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1066",name:"Pettijohn",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1067",name:"Pierce",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1068",name:"Powell",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1069",name:"Quinn",protocols:["shoulder", "patellar", "groin"],shoulderSide:"B",kneeSide:"B",hamstringSide:null},
+    {id:"1070",name:"Rembert",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1071",name:"Ricketts",protocols:["shoulder", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1072",name:"Riegle",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1073",name:"Riely",protocols:["shoulder"],shoulderSide:"R",kneeSide:null,hamstringSide:null},
+    {id:"1074",name:"Riggs D.",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1075",name:"Roberts",protocols:["patellar", "groin", "hamstring"],shoulderSide:null,kneeSide:"B",hamstringSide:"R"},
+    {id:"1076",name:"Rogers",protocols:["shoulder", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1077",name:"Roker",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1078",name:"Rudzinski",protocols:["shoulder"],shoulderSide:"L",kneeSide:null,hamstringSide:null},
+    {id:"1079",name:"Ruffin",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1080",name:"Russaw",protocols:["groin", "hamstring"],shoulderSide:null,kneeSide:null,hamstringSide:"R"},
+    {id:"1081",name:"Sayin",protocols:["shoulder", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"L"},
+    {id:"1082",name:"Siereveld",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1083",name:"Simeon",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1084",name:"Sitanilei",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1085",name:"Smith Jr, Will",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1086",name:"Smith, JJ",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1087",name:"Smith, James",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1088",name:"Smith, T",protocols:["shoulder", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1089",name:"St. Clair",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1090",name:"Stover G.",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1091",name:"Stover K.",protocols:["shoulder"],shoulderSide:"R",kneeSide:null,hamstringSide:null},
+    {id:"1092",name:"Thobe",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1093",name:"Thomas",protocols:["shoulder", "groin", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1094",name:"Timmons",protocols:["shoulder", "groin", "hamstring"],shoulderSide:"B",kneeSide:null,hamstringSide:"R"},
+    {id:"1095",name:"Valerio-Hudson",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1096",name:"VanSickle",protocols:["shoulder"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1097",name:"Walker",protocols:["shoulder", "patellar"],shoulderSide:"B",kneeSide:"R",hamstringSide:null},
+    {id:"1098",name:"Washington",protocols:["patellar"],shoulderSide:null,kneeSide:"B",hamstringSide:null},
+    
+    {id:"1100",name:"Welcing",protocols:["shoulder","groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1101",name:"Wilder",protocols:["shoulder"],shoulderSide:"R",kneeSide:null,hamstringSide:null},
+    {id:"1102",name:"Wilhelm",protocols:["shoulder", "groin"],shoulderSide:"B",kneeSide:null,hamstringSide:null},
+    {id:"1103",name:"Williams",protocols:["shoulder", "patellar", "hamstring"],shoulderSide:"B",kneeSide:"B",hamstringSide:"R"},
+    {id:"1104",name:"Woods",protocols:["groin"],shoulderSide:null,kneeSide:null,hamstringSide:null},
+    {id:"1105",name:"Yeager",protocols:["shoulder", "hamstring"],shoulderSide:"L",kneeSide:null,hamstringSide:"R"},
+    {id:"1106",name:"Young",protocols:["patellar", "groin", "hamstring"],shoulderSide:null,kneeSide:"R",hamstringSide:"R"}
+];
+
+async function seedAthletes() {
+  const rows = ROSTER.map(a => [a.id, a.name, a.protocols.join(','), a.shoulderSide||'', a.kneeSide||'', new Date().toISOString()]);
+  await sheetsAppend(`${SHEET_ATHLETES}!A2`, rows);
+}
+
+function loadDemoData() {
+  athletes = ROSTER;
+  sessions = [];
+  refreshAll();
+}
+
+// ── SYNC ATHLETES ─────────────────────────────────────────────
+async function syncAthletesToSheet() {
+  if (!accessToken) { toast('Not connected to Google Sheets'); return; }
+  toast('Syncing athletes…');
+  try {
+    await sheetsPut(`spreadsheets/${CONFIG.SHEET_ID}/values/${SHEET_ATHLETES}!A2`,
+      { values: athletes.map(a => [a.id, a.name, a.protocols.join(','), a.shoulderSide||'', a.kneeSide||'', '']) });
+    toast('Athletes synced', 'success');
+  } catch(e) { toast('Sync failed', 'error'); }
+}
+
+// ── PROGRESSION ENGINE ────────────────────────────────────────
+let BAND_SEQ = ['yellow','red','green','blue','black','silver','gold'];
+let RIR_THRESHOLD = 3;   // global — RIR must be >= this to progress
+let SETS_NEEDED   = 2;   // global — how many sets must hit target
+
+// Rules keyed by exercise name (lowercase). Editable via Progression tab.
+let PROG_RULES = {
+  'hamstring gliders':               { type:'weight', repTarget:10, setsNeeded:2, increment:5 },
+  'eccentric hamstring curl (2 up, 1 down)': { type:'weight', repTarget:10, setsNeeded:2, increment:10 },
+  '60° knee extension isometric':    { type:'time',   timeTarget:30, setsNeeded:2, increment:10 },
+  'wall sit (dl or sl)':             { type:'stage', stages:['DL','SL','Weighted SL'], timeTarget:30, setsNeeded:2 },
+  'oh kettlebell carry':             { type:'weight', repTarget:3,  setsNeeded:2, increment:2.5 },
+  'serratus press away':             { type:'none' },
+  'banded i-y-t circles':            { type:'band',   repTarget:10, setsNeeded:2 },
+  'isometric @ 0°':                  { type:'none' },
+  'valslider diagonal':              { type:'none' },
+  'valslider horizontal':            { type:'none' },
+};
+
+// Load saved rules from localStorage if available
+function loadProgRules() {
+  try {
+    const saved = localStorage.getItem('prog-rules-v1');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed.rules)    PROG_RULES      = parsed.rules;
+      if (parsed.rir)      RIR_THRESHOLD   = parsed.rir;
+      if (parsed.sets)     SETS_NEEDED     = parsed.sets;
+      if (parsed.bandSeq)  BAND_SEQ        = parsed.bandSeq;
+    }
+  } catch(e) {}
+}
+
+function saveProgRules() {
+  // Read global thresholds
+  RIR_THRESHOLD = parseInt(document.getElementById('prog-rir-threshold').value) || 3;
+  SETS_NEEDED   = parseInt(document.getElementById('prog-sets-needed').value)   || 2;
+  BAND_SEQ      = document.getElementById('prog-band-seq').value
+                    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+  // Read per-exercise rules from form
+  document.querySelectorAll('.prog-rule-row').forEach(row => {
+    const key  = row.dataset.key;
+    const type = row.querySelector('.prog-type-sel').value;
+    if (!key) return;
+
+    if (type === 'none') {
+      PROG_RULES[key] = { type: 'none' };
+    } else if (type === 'weight') {
+      PROG_RULES[key] = {
+        type: 'weight',
+        repTarget:  parseFloat(row.querySelector('.prog-target').value)    || 10,
+        setsNeeded: parseInt(row.querySelector('.prog-sets').value)        || SETS_NEEDED,
+        increment:  parseFloat(row.querySelector('.prog-increment').value) || 5,
+      };
+    } else if (type === 'time') {
+      PROG_RULES[key] = {
+        type: 'time',
+        timeTarget: parseFloat(row.querySelector('.prog-target').value)    || 30,
+        setsNeeded: parseInt(row.querySelector('.prog-sets').value)        || SETS_NEEDED,
+        increment:  parseFloat(row.querySelector('.prog-increment').value) || 10,
+      };
+    } else if (type === 'band') {
+      PROG_RULES[key] = {
+        type: 'band',
+        repTarget:  parseFloat(row.querySelector('.prog-target').value)    || 10,
+        setsNeeded: parseInt(row.querySelector('.prog-sets').value)        || SETS_NEEDED,
+      };
+    } else if (type === 'stage') {
+      PROG_RULES[key] = {
+        type: 'stage',
+        stages: ['DL','SL','Weighted SL'],
+        timeTarget: parseFloat(row.querySelector('.prog-target').value)    || 30,
+        setsNeeded: parseInt(row.querySelector('.prog-sets').value)        || SETS_NEEDED,
+      };
+    }
+  });
+
+  // Persist
+  try {
+    localStorage.setItem('prog-rules-v1', JSON.stringify({
+      rules: PROG_RULES, rir: RIR_THRESHOLD, sets: SETS_NEEDED, bandSeq: BAND_SEQ
+    }));
+  } catch(e) {}
+
+  toast('Progression rules saved', 'success');
+  // Re-render exercises if on log tab to pick up changes immediately
+  if (document.getElementById('view-log').classList.contains('active')) renderExercises();
+}
+
+function renderProgRules() {
+  // Sync global fields
+  const rirSel  = document.getElementById('prog-rir-threshold');
+  const setSel  = document.getElementById('prog-sets-needed');
+  const bandInp = document.getElementById('prog-band-seq');
+  if (rirSel)  rirSel.value  = RIR_THRESHOLD;
+  if (setSel)  setSel.value  = SETS_NEEDED;
+  if (bandInp) bandInp.value = BAND_SEQ.join(', ');
+
+  // Build per-exercise cards grouped by protocol
+  const PROTOCOL_EXERCISES = {
+    'Hamstring':       ['hamstring gliders','eccentric hamstring curl (2 up, 1 down)'],
+    'Groin':           ['isometric @ 0°','valslider diagonal','valslider horizontal'],
+    'Quad': ['60° knee extension isometric','wall sit (dl or sl)'],
+    'Shoulder':        ['oh kettlebell carry','serratus press away','banded i-y-t circles'],
+  };
+
+  const container = document.getElementById('prog-rules-container');
+  container.innerHTML = Object.entries(PROTOCOL_EXERCISES).map(([proto, exNames]) => {
+    const rows = exNames.map(key => {
+      const rule = PROG_RULES[key] || { type: 'none' };
+      const displayName = key.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+
+      const typeOpts = ['none','weight','time','band','stage'].map(t =>
+        `<option value="${t}" ${rule.type===t?'selected':''}>${
+          t==='none'?'No progression':t==='weight'?'Weight':t==='time'?'Time (seconds)':t==='band'?'Band color':'Stage (DL→SL→Weighted)'
+        }</option>`
+      ).join('');
+
+      // Conditional fields based on type
+      const targetLabel = rule.type==='time' ? 'Time target (s)' : 'Rep target';
+      const targetVal   = rule.type==='time' ? (rule.timeTarget||30) : (rule.repTarget||10);
+      const showIncrement = rule.type==='weight'||rule.type==='time';
+        const isStageType = rule.type==='stage';
+
+      return `<tr class="prog-rule-row" data-key="${key}">
+        <td style="font-weight:500;font-size:13px;padding:10px 12px;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary)">${displayName}</td>
+        <td style="padding:8px 12px;border-bottom:0.5px solid var(--color-border-tertiary)">
+          <select class="prog-type-sel" onchange="updateProgRow(this)" style="width:150px">
+            ${typeOpts}
+          </select>
+        </td>
+        <td style="padding:8px 12px;border-bottom:0.5px solid var(--color-border-tertiary)" class="prog-target-cell">
+          ${rule.type!=='none' ? `
+            <div style="display:flex;align-items:center;gap:6px">
+              <div class="form-group" style="width:90px">
+                <label>${targetLabel}</label>
+                <input type="number" class="prog-target" value="${targetVal}" min="1" step="${rule.type==='time'?5:1}" style="width:80px">
+              </div>
+              ${showIncrement ? `
+              <div class="form-group" style="width:100px">
+                <label>Increment (lb)</label>
+                <input type="number" class="prog-increment" value="${rule.increment||5}" min="0.5" step="0.5" style="width:80px">
+              </div>` : ''}
+              <div class="form-group" style="width:100px">
+                <label>Sets needed</label>
+                <select class="prog-sets" style="width:90px">
+                  <option value="1" ${(rule.setsNeeded||SETS_NEEDED)===1?'selected':''}>1 of 3</option>
+                  <option value="2" ${(rule.setsNeeded||SETS_NEEDED)===2?'selected':''}>2 of 3</option>
+                  <option value="3" ${(rule.setsNeeded||SETS_NEEDED)===3?'selected':''}>All 3</option>
+                </select>
+              </div>
+            </div>` : '<span style="color:var(--color-text-tertiary);font-size:12px">—</span>'}
+        </td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="card" style="margin-bottom:12px;padding:0;overflow:hidden">
+      <div style="background:var(--color-background-secondary);padding:8px 14px;border-bottom:0.5px solid var(--color-border-tertiary)">
+        <span style="font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-secondary);font-weight:500">${proto}</span>
+      </div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr>
+            <th style="text-align:left;padding:6px 12px;font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-tertiary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:400;width:30%">Exercise</th>
+            <th style="text-align:left;padding:6px 12px;font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-tertiary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:400;width:20%">Type</th>
+            <th style="text-align:left;padding:6px 12px;font-size:10px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.06em;color:var(--color-text-tertiary);border-bottom:0.5px solid var(--color-border-tertiary);font-weight:400">Parameters</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+}
+
+function updateProgRow(sel) {
+  // When type changes, rebuild just the parameter cell for that row
+  const row  = sel.closest('.prog-rule-row');
+  const type = sel.value;
+  const key  = row.dataset.key;
+  const cell = row.querySelector('.prog-target-cell');
+  const rule = PROG_RULES[key] || {};
+  const targetLabel   = type==='time' ? 'Time target (s)' : 'Rep target';
+  const targetVal     = type==='time' ? (rule.timeTarget||30) : (rule.repTarget||10);
+  const showIncrement = type==='weight' || type==='time';
+  const incVal        = rule.increment || (type==='time' ? 10 : 5);
+
+  cell.innerHTML = type==='none'
+    ? '<span style="color:var(--color-text-tertiary);font-size:12px">—</span>'
+    : type==='stage'
+    ? `<div style="font-size:12px;color:var(--color-text-secondary)">DL → SL → Weighted SL <span style="color:var(--color-text-tertiary);font-size:11px">(auto-sequence)</span></div><div style="display:flex;gap:6px;margin-top:6px"><div class="form-group" style="width:120px"><label>Time target (s)</label><input type="number" class="prog-target" value="${rule.timeTarget||30}" min="5" step="5" style="width:100px"></div><div class="form-group" style="width:100px"><label>Sets needed</label><select class="prog-sets" style="width:90px"><option value="1" ${SETS_NEEDED===1?'selected':''}>1 of 3</option><option value="2" ${SETS_NEEDED===2?'selected':''}>2 of 3</option><option value="3" ${SETS_NEEDED===3?'selected':''}>All 3</option></select></div></div>`
+    : `<div style="display:flex;align-items:center;gap:6px">
+        <div class="form-group" style="width:90px">
+          <label>${targetLabel}</label>
+          <input type="number" class="prog-target" value="${targetVal}" min="1" step="${type==='time'?5:1}" style="width:80px">
+        </div>
+        ${showIncrement ? `
+        <div class="form-group" style="width:100px">
+          <label>Increment (lb)</label>
+          <input type="number" class="prog-increment" value="${incVal}" min="0.5" step="0.5" style="width:80px">
+        </div>` : ''}
+        <div class="form-group" style="width:100px">
+          <label>Sets needed</label>
+          <select class="prog-sets" style="width:90px">
+            <option value="1" ${SETS_NEEDED===1?'selected':''}>1 of 3</option>
+            <option value="2" ${SETS_NEEDED===2?'selected':''}>2 of 3</option>
+            <option value="3" ${SETS_NEEDED===3?'selected':''}>All 3</option>
+          </select>
+        </div>
+      </div>`;
+}
+
+function getRuleForExercise(exName) {
+  const key = exName.toLowerCase().trim();
+  // exact match first
+  if (PROG_RULES[key]) return PROG_RULES[key];
+  // partial match
+  for (const [k, v] of Object.entries(PROG_RULES)) {
+    if (key.includes(k) || k.includes(key)) return v;
+  }
+  return null;
+}
+
+// Returns the most recent session for this athlete+protocol+day (same day number)
+function getLastSession(athleteId, protocol, day) {
+  return sessions
+    .filter(s => s.athleteId === athleteId && s.protocol === protocol && s.day === day)
+    .sort((a, b) => b.ts - a.ts)[0] || null;
+}
+
+// Core: given a last session's exercise data + rule, return a suggestion object
+// { action: 'increase'|'maintain'|'band'|'none', suggestedWt, suggestedBand, reason, lastWt, lastReps }
+function calcProgression(lastExData, rule) {
+  if (!rule || rule.type === 'none') return { action: 'none' };
+
+  if (rule.type === 'weight') {
+    const lastWt = lastExData?.sets?.[0]?.wt ?? null;
+    const sets = lastExData?.sets || [];
+    const rir  = lastExData?.rir ?? null;
+
+    // Count sets that hit the rep target
+    const setsHit = sets.filter(s => s.reps != null && s.reps >= rule.repTarget).length;
+    const rirOk   = rir != null && rir >= RIR_THRESHOLD;
+
+    if (setsHit >= rule.setsNeeded && rirOk) {
+      const newWt = lastWt != null ? lastWt + rule.increment : null;
+      return {
+        action: 'increase',
+        suggestedWt: newWt,
+        lastWt,
+        reason: `${setsHit}/3 sets hit ${rule.repTarget} reps · RIR ${rir} ≥ 3`
+      };
+    } else {
+      return {
+        action: 'maintain',
+        suggestedWt: lastWt,
+        lastWt,
+        reason: setsHit < rule.setsNeeded
+          ? `Only ${setsHit}/3 sets hit ${rule.repTarget} reps`
+          : `RIR ${rir} < 3`
+      };
+    }
+  }
+
+  if (rule.type === 'time') {
+    // For isometric holds, reps field stores hold time in seconds
+    const sets = lastExData?.sets || [];
+    const lastWt = lastExData?.sets?.[0]?.wt ?? null;
+    const rir  = lastExData?.rir ?? null;
+    const setsHit = sets.filter(s => s.reps != null && s.reps >= rule.timeTarget).length;
+    const rirOk   = rir != null && rir >= RIR_THRESHOLD;
+
+    if (setsHit >= rule.setsNeeded && rirOk) {
+      const newWt = lastWt != null ? lastWt + rule.increment : null;
+      return {
+        action: 'increase',
+        suggestedWt: newWt,
+        lastWt,
+        reason: `${setsHit}/3 sets ≥ ${rule.timeTarget}s · RIR ${rir} ≥ 3`
+      };
+    } else {
+      return {
+        action: 'maintain',
+        suggestedWt: lastWt,
+        lastWt,
+        reason: setsHit < rule.setsNeeded
+          ? `Only ${setsHit}/3 sets hit ${rule.timeTarget}s`
+          : `RIR ${rir} < 3`
+      };
+    }
+  }
+
+  if (rule.type === 'band') {
+    const sets   = lastExData?.sets || [];
+    const rir    = lastExData?.rir ?? null;
+    const bandIdx = lastExData?.sets?.[0]?.wt ?? null;
+    const setsHit = sets.filter(s => s.reps != null && s.reps >= rule.repTarget).length;
+    const rirOk   = rir != null && rir >= RIR_THRESHOLD;
+
+    if (setsHit >= rule.setsNeeded && rirOk) {
+      const nextIdx = bandIdx != null ? Math.min(bandIdx + 1, BAND_SEQ.length - 1) : null;
+      const currentBand = bandIdx != null ? BAND_SEQ[bandIdx] : null;
+      const nextBand    = nextIdx != null ? BAND_SEQ[nextIdx] : null;
+      const atMax = bandIdx != null && bandIdx >= BAND_SEQ.length - 1;
+      return { action:'band', currentBand, nextBand, atMax,
+        reason: `${setsHit}/3 sets hit ${rule.repTarget} reps · RIR ${rir} ≥ ${RIR_THRESHOLD}` };
+    } else {
+      const currentBand = bandIdx != null ? BAND_SEQ[bandIdx] : null;
+      return { action:'maintain', suggestedWt: bandIdx, currentBand,
+        reason: setsHit < rule.setsNeeded
+          ? `Only ${setsHit}/3 sets hit ${rule.repTarget} reps`
+          : `RIR ${rir} < ${RIR_THRESHOLD}` };
+    }
+  }
+
+  if (rule.type === 'stage') {
+    // Wall sit stages: DL → SL → Weighted SL
+    // Store stage index in wt field (0=DL, 1=SL, 2=Weighted SL)
+    const stages  = rule.stages || ['DL','SL','Weighted SL'];
+    const sets    = lastExData?.sets || [];
+    const rir     = lastExData?.rir ?? null;
+    const stageIdx = lastExData?.sets?.[0]?.wt ?? null;
+    const setsHit  = sets.filter(s => s.reps != null && s.reps >= (rule.timeTarget||30)).length;
+    const rirOk    = rir != null && rir >= RIR_THRESHOLD;
+    const curStage = stageIdx != null ? (stages[stageIdx] || stages[stages.length-1]) : stages[0];
+    const atMax    = stageIdx != null && stageIdx >= stages.length - 1;
+
+    if (setsHit >= rule.setsNeeded && rirOk && !atMax) {
+      const nextIdx  = stageIdx != null ? stageIdx + 1 : 1;
+      const nextStage = stages[Math.min(nextIdx, stages.length-1)];
+      return { action:'stage', currentStage: curStage, nextStage, atMax: false,
+        reason: `${setsHit}/3 sets ≥ ${rule.timeTarget}s · RIR ${rir} ≥ ${RIR_THRESHOLD}` };
+    } else {
+      return { action: atMax ? 'stage-max' : 'maintain',
+        currentStage: curStage, suggestedWt: stageIdx,
+        reason: atMax ? `Max stage reached (${curStage})`
+          : setsHit < rule.setsNeeded ? `Only ${setsHit}/3 sets hit ${rule.timeTarget}s`
+          : `RIR ${rir} < ${RIR_THRESHOLD}` };
+    }
+  }
+
+  return { action: 'none' };
+}
+
+function suggestionHTML(suggestion, rule, exName) {
+  if (!suggestion || suggestion.action === 'none') return '';
+
+  const isBand = rule?.type === 'band';
+  const isTime = rule?.type === 'time';
+
+  if (suggestion.action === 'increase') {
+    const wtStr = suggestion.suggestedWt != null
+      ? `<strong style="color:var(--accent)">${suggestion.suggestedWt} lb</strong>`
+      : '<strong style="color:var(--accent)">increase</strong>';
+    return `<div class="prog-suggestion">
+      <div class="prog-icon">↑</div>
+      <div>
+        <div class="prog-label up">Progress — suggest ${wtStr}</div>
+        <div class="prog-detail">Last: ${suggestion.lastWt != null ? suggestion.lastWt+'lb' : '—'} · ${suggestion.reason}</div>
+      </div>
+      ${suggestion.suggestedWt != null ? `<button class="btn btn-sm prog-apply" onclick="applyWeight(this, ${suggestion.suggestedWt})">Apply</button>` : ''}
+    </div>`;
+  }
+
+  if (suggestion.action === 'band') {
+    if (suggestion.atMax) {
+      return `<div class="prog-suggestion band">
+        <div class="prog-icon">★</div>
+        <div>
+          <div class="prog-label band">Max band reached — ${suggestion.currentBand||'?'}</div>
+          <div class="prog-detail">${suggestion.reason}</div>
+        </div>
+      </div>`;
+    }
+    const arrow = suggestion.currentBand && suggestion.nextBand
+      ? `${suggestion.currentBand} → <strong style="color:var(--amber)">${suggestion.nextBand}</strong>`
+      : `advance band color`;
+    return `<div class="prog-suggestion band">
+      <div class="prog-icon">↑</div>
+      <div>
+        <div class="prog-label band">Advance band — ${arrow}</div>
+        <div class="prog-detail">${suggestion.reason}</div>
+      </div>
+    </div>`;
+  }
+
+  if (suggestion.action === 'stage') {
+    const arrow = `${suggestion.currentStage} → <strong style="color:var(--amber)">${suggestion.nextStage}</strong>`;
+    return `<div class="prog-suggestion band">
+      <div class="prog-icon">↑</div>
+      <div>
+        <div class="prog-label band">Progress stage — ${arrow}</div>
+        <div class="prog-detail">${suggestion.reason}</div>
+      </div>
+    </div>`;
+  }
+
+  if (suggestion.action === 'stage-max') {
+    return `<div class="prog-suggestion band">
+      <div class="prog-icon">★</div>
+      <div>
+        <div class="prog-label band">Max stage reached — ${suggestion.currentStage||'?'}</div>
+        <div class="prog-detail">${suggestion.reason}</div>
+      </div>
+    </div>`;
+  }
+
+  if (suggestion.action === 'maintain') {
+    const wtStr = suggestion.suggestedWt != null
+      ? `${isBand ? (BAND_SEQ[suggestion.suggestedWt]||suggestion.suggestedWt) : suggestion.suggestedWt + ' lb'}`
+      : '—';
+    return `<div class="prog-suggestion same">
+      <div class="prog-icon">→</div>
+      <div>
+        <div class="prog-label same">Maintain — ${wtStr}</div>
+        <div class="prog-detail">${suggestion.reason}</div>
+      </div>
+    </div>`;
+  }
+
+  return '';
+}
+
+function applyWeight(btn, wt) {
+  // Find the Set 1 weight input in the same card and fill it
+  const card = btn.closest('.card');
+  const s1input = card.querySelector('input[id$="_s1_wt"]');
+  if (s1input) { s1input.value = wt; s1input.style.borderColor = 'var(--accent)'; }
+  btn.textContent = 'Applied ✓';
+  btn.disabled = true;
+}
+
+// ── LOG SESSION ───────────────────────────────────────────────
+function onAthleteChange() {
+  const id = document.getElementById('log-athlete').value;
+  const a = athletes.find(x => x.id === id);
+  const protoSel = document.getElementById('log-protocol');
+  protoSel.innerHTML = '';
+  if (a && a.protocols.length) {
+    a.protocols.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p; o.textContent = PROTOCOLS[p]?.label || p;
+      protoSel.appendChild(o);
+    });
+  } else {
+    Object.entries(PROTOCOLS).forEach(([k,v]) => {
+      const o = document.createElement('option');
+      o.value = k; o.textContent = v.label;
+      protoSel.appendChild(o);
+    });
+  }
+  onProtocolChange();
+  document.getElementById('log-status').textContent = a ? a.name : 'Select an athlete to begin';
+}
+
+function onProtocolChange() {
+  const id = document.getElementById('log-athlete').value;
+  const proto = document.getElementById('log-protocol').value;
+  const a = athletes.find(x => x.id === id);
+  if (a) {
+    const side = proto === 'shoulder'  ? (SIDE_MAP[a.shoulderSide]   || 'bilateral')
+               : proto === 'patellar'  ? (SIDE_MAP[a.kneeSide]      || 'bilateral')
+               : proto === 'hamstring' ? (SIDE_MAP[a.hamstringSide] || 'bilateral')
+               : 'bilateral';
+    document.getElementById('log-side').value = side;
+  }
+  renderExercises();
+}
+
+function renderExercises() {
+  const proto     = document.getElementById('log-protocol').value;
+  const athleteId = document.getElementById('log-athlete').value;
+  const day       = document.getElementById('log-day').value;
+  const exs       = PROTOCOLS[proto]?.exercises || [];
+  const lastSess  = athleteId ? getLastSession(athleteId, proto, day) : null;
+  const c = document.getElementById('exercises-container');
+
+  c.innerHTML = exs.map((ex, i) => {
+    const lastExData  = lastSess?.exerciseData?.[i] || null;
+    const rule        = getRuleForExercise(ex);
+    const suggestion  = lastExData ? calcProgression(lastExData, rule) : null;
+    const suggBox     = suggestion ? suggestionHTML(suggestion, rule, ex) : '';
+
+    // Row label: time-based exercises label reps as "Time (s)"
+    const isTime = rule?.type === 'time';
+    const repsLabel = isTime ? 'Time (s)' : 'Reps';
+
+    // For band exercises, label wt as "Band #"
+    const isBand = rule?.type === 'band';
+    const wtLabel = isBand ? 'Band idx' : 'Wt (lb)';
+    const wtNote  = isBand
+      ? `<div style="font-size:10px;color:var(--text3);margin-bottom:8px;font-family:var(--mono)">${BAND_SEQ.map((b,idx)=>`${idx}=${b}`).join(' · ')}</div>`
+      : '';
+
+    // Show last session values as placeholders
+    const lastWt   = (s) => lastSess?.exerciseData?.[i]?.sets?.[s-1]?.wt   ?? null;
+    const lastReps = (s) => lastSess?.exerciseData?.[i]?.sets?.[s-1]?.reps ?? null;
+    const lastRir  =        lastSess?.exerciseData?.[i]?.rir ?? null;
+
+    return `<div class="card">
+      <div style="font-size:13px;font-weight:500;margin-bottom:10px;color:var(--text)">${ex}</div>
+      ${suggBox}
+      ${wtNote}
+      <div class="set-hdr"><span></span><span>Set 1</span><span>Set 2</span><span>Set 3</span><span>RIR</span></div>
+      ${[[wtLabel, 'wt', isBand ? '1' : '2.5'], [repsLabel, 'reps', '1']].map(([lbl, fld, step]) => `
+        <div class="set-grid">
+          <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${lbl}</span>
+          ${[1,2,3].map(s => {
+            const ph = fld==='wt' ? (lastWt(s) ?? '—') : (lastReps(s) ?? '—');
+            return `<input type="number" id="ex${i}_s${s}_${fld}" placeholder="${ph}" min="0" step="${step}" style="text-align:center">`;
+          }).join('')}
+          ${fld==='wt' ? `<input type="number" id="ex${i}_rir" placeholder="${lastRir ?? '—'}" min="0" max="10" style="text-align:center">` : '<span></span>'}
+        </div>`).join('')}
+    </div>`;
+  }).join('');
+
+  const t = new Date();
+  document.getElementById('log-date').value = `${t.getMonth()+1}/${t.getDate()}`;
+}
+
+async function saveSession() {
+  const athleteId = document.getElementById('log-athlete').value;
+  const protocol  = document.getElementById('log-protocol').value;
+  const day       = document.getElementById('log-day').value;
+  const side      = document.getElementById('log-side').value;
+  const date      = document.getElementById('log-date').value.trim();
+  const initials  = document.getElementById('log-initials').value.trim();
+  const notes     = document.getElementById('log-notes').value.trim();
+  if (!athleteId) { toast('Select an athlete', 'error'); return; }
+  if (!date)      { toast('Enter a date', 'error'); return; }
+
+  const a = athletes.find(x => x.id === athleteId);
+  const exs = PROTOCOLS[protocol]?.exercises || [];
+  const exData = exs.map((_, i) => ({
+    sets: [1,2,3].map(s => ({
+      wt:   parseFloat(document.getElementById(`ex${i}_s${s}_wt`)?.value)   || null,
+      reps: parseInt(document.getElementById(`ex${i}_s${s}_reps`)?.value) || null,
+    })),
+    rir: (v => isNaN(v)?null:v)(parseInt(document.getElementById(`ex${i}_rir`)?.value))
+  }));
+
+  const ts = Date.now();
+  const id = ts.toString();
+  const sess = { id, athleteId, athleteName: a?.name||'', protocol, day, side, date, initials, notes, exerciseData: exData, ts, source:'manual' };
+  sessions.push(sess);
+
+  if (accessToken) {
+    const row = sessionToRow(sess);
+    await sheetsAppend(`${SHEET_SESSIONS}!A2`, [row]);
+  }
+
+  // Clear form
+  exs.forEach((_, i) => {
+    [1,2,3].forEach(s => {
+      const w = document.getElementById(`ex${i}_s${s}_wt`);
+      const r = document.getElementById(`ex${i}_s${s}_reps`);
+      if(w) w.value=''; if(r) r.value='';
+    });
+    const ri = document.getElementById(`ex${i}_rir`); if(ri) ri.value='';
+  });
+  document.getElementById('log-notes').value = '';
+  document.getElementById('log-initials').value = '';
+  toast(`Saved — ${a?.name}`, 'success');
+}
+
+function sessionToRow(s) {
+  const row = [s.id, s.athleteId, s.athleteName, s.protocol, s.day, s.side, s.date, s.initials||'', s.notes||''];
+  for (let e = 0; e < 3; e++) {
+    const ex = s.exerciseData?.[e];
+    for (let sv = 0; sv < 3; sv++) {
+      row.push(ex?.sets?.[sv]?.wt ?? '');
+      row.push(ex?.sets?.[sv]?.reps ?? '');
+    }
+    row.push(ex?.rir ?? '');
+  }
+  row.push(s.source || 'manual');
+  row.push(s.ts);
+  return row;
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function daysSince(dateStr) {
+  if (!dateStr) return 999;
+  const p = dateStr.split('/');
+  if (p.length < 2) return 999;
+  const d = new Date(new Date().getFullYear(), parseInt(p[0])-1, parseInt(p[1]));
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+
+function athleteStats(a) {
+  const s = sessions.filter(x => x.athleteId === a.id);
+  const last = s.sort((a,b)=>b.ts-a.ts)[0];
+  const expected = a.protocols.length * 2;
+  const recent = s.filter(x => daysSince(x.date) <= 7).length;
+  const pct = expected > 0 ? Math.min(100, Math.round(recent/expected*100)) : 0;
+  let status = 'no-sessions';
+  if (s.length) status = pct >= 75 ? 'on-track' : 'needs-attention';
+  return { total: s.length, lastDate: last?.date||null, days: daysSince(last?.date), pct, status, recent, expected };
+}
+
+function statusBadge(status) {
+  if (status==='on-track') return '<span class="badge badge-green">On track</span>';
+  if (status==='needs-attention') return '<span class="badge badge-amber">Needs attention</span>';
+  return '<span class="badge badge-gray">No sessions</span>';
+}
+
+function renderDashboard() {
+  const all = athletes.map(a => ({ a, s: athleteStats(a) }));
+  const onTrack = all.filter(x=>x.s.status==='on-track').length;
+  const needsAttn = all.filter(x=>x.s.status==='needs-attention').length;
+  const noSess = all.filter(x=>x.s.status==='no-sessions').length;
+  document.getElementById('dash-metrics').innerHTML = `
+    <div class="metric"><div class="metric-val">${athletes.length}</div><div class="metric-lbl">Athletes</div></div>
+    <div class="metric"><div class="metric-val green">${onTrack}</div><div class="metric-lbl">On track</div></div>
+    <div class="metric"><div class="metric-val amber">${needsAttn}</div><div class="metric-lbl">Needs attention</div></div>
+    <div class="metric"><div class="metric-val" style="color:var(--text3)">${noSess}</div><div class="metric-lbl">No sessions</div></div>
+    <div class="metric"><div class="metric-val">${sessions.length}</div><div class="metric-lbl">Total sessions</div></div>`;
+  renderDashTable();
+}
+
+function renderDashTable() {
+  const search = document.getElementById('dash-search').value.toLowerCase();
+  const pf = document.getElementById('dash-proto').value;
+  const sf = document.getElementById('dash-status').value;
+  let list = [...athletes];
+  if (search) list = list.filter(a => a.name.toLowerCase().includes(search));
+  if (pf) list = list.filter(a => a.protocols.includes(pf));
+  const tbody = document.getElementById('dash-tbody');
+  let rows = list.sort((a,b)=>a.name.localeCompare(b.name));
+  if (sf) rows = rows.filter(a => athleteStats(a).status === sf);
+  if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:24px">No athletes match filters</td></tr>'; return; }
+  tbody.innerHTML = rows.map(a => {
+    const s = athleteStats(a);
+    const tags = a.protocols.map(p => {
+      const side = p==='shoulder'?a.shoulderSide : p==='patellar'?a.kneeSide : null;
+      return `<span class="tag">${PROTOCOLS[p]?.label||p}${side?`<span class="side-tag">${side}</span>`:''}</span>`;
+    }).join('');
+    const barColor = s.pct>=75?'var(--green)':s.pct>=40?'var(--amber)':'var(--red)';
+    const lastStr = s.lastDate ? `${s.lastDate}${s.days>7?` <span style="color:var(--text3)">(${s.days}d)</span>`:''}` : '—';
+    return `<tr class="clickable" onclick="showAthleteDetail('${a.id}')">
+      <td style="font-weight:500">${a.name}</td>
+      <td>${tags}</td>
+      <td style="font-family:var(--mono)">${s.total}</td>
+      <td>${lastStr}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="prog" style="width:80px"><div class="prog-fill" style="width:${s.pct}%;background:${barColor}"></div></div>
+          <span style="font-family:var(--mono);font-size:11px;color:var(--text2)">${s.recent}/${s.expected}</span>
+        </div>
+      </td>
+      <td>${statusBadge(s.status)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function showAthleteDetail(id) {
+  const a = athletes.find(x => x.id === id);
+  if (!a) return;
+  const s = athleteStats(a);
+  const aSessions = sessions.filter(x => x.athleteId === id).sort((a,b)=>b.ts-a.ts);
+  const tags = a.protocols.map(p => `<span class="tag">${PROTOCOLS[p]?.label||p}</span>`).join('');
+  const rows = aSessions.length ? aSessions.map(sess => {
+    const ex0 = sess.exerciseData?.[0];
+    const s1 = ex0?.sets?.[0];
+    const preview = (s1?.wt||s1?.reps) ? `${s1.wt||'—'}lb × ${s1.reps||'—'}` : '—';
+    return `<tr><td>${sess.date}</td><td>${PROTOCOLS[sess.protocol]?.label||sess.protocol}</td><td>Day ${sess.day}${sess.side!=='bilateral'?' · '+sess.side:''}</td><td style="font-family:var(--mono)">${preview}</td><td style="font-family:var(--mono)">${sess.rir??'—'}</td><td style="color:var(--color-text-secondary)">${sess.initials||'—'}</td><td style="color:var(--color-text-secondary);font-size:12px">${sess.notes||''}</td><td><span class="badge ${sess.source==='pdf'?'badge-blue':'badge-gray'}" style="${sess.source==='pdf'?'background:rgba(96,184,255,.12);color:var(--color-text-info);border-color:rgba(96,184,255,.25)':''}">${sess.source||'manual'}</span></td></tr>`;
+  }).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--color-text-tertiary);padding:20px">No sessions yet</td></tr>';
+
+  document.getElementById('dash-detail-content').innerHTML = `
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px">
+      <div>
+        <div style="font-size:20px;font-weight:600;letter-spacing:-.01em;margin-bottom:6px">${a.name}</div>
+        <div>${tags}</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="btn btn-sm" onclick="printAthleteSheet('${a.id}', false)" title="Print this week with progression suggestions">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Print sheet
+        </button>
+        <button class="btn btn-sm" onclick="printAthleteSheet('${a.id}', true)" title="Print blank sheet with no pre-filled values">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/></svg>
+          Print blank
+        </button>
+      </div>
+    </div>
+    <div class="metrics" style="max-width:500px;margin-bottom:20px">
+      <div class="metric"><div class="metric-val">${s.total}</div><div class="metric-lbl">Sessions</div></div>
+      <div class="metric"><div class="metric-val">${s.lastDate||'—'}</div><div class="metric-lbl">Last session</div></div>
+      <div class="metric"><div class="metric-val ${s.pct>=75?'green':s.pct>=40?'amber':'red'}">${s.pct}%</div><div class="metric-lbl">Weekly compliance</div></div>
+    </div>
+    <hr>
+    <div style="font-size:12px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;color:var(--color-text-secondary);margin:16px 0 10px">Session history</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Date</th><th>Protocol</th><th>Day/side</th><th>Set 1 ex 1</th><th>RIR</th><th>Staff</th><th>Notes</th><th>Source</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  document.getElementById('dash-main').style.display = 'none';
+  document.getElementById('dash-detail').style.display = 'block';
+}
+
+function closeDashDetail() {
+  document.getElementById('dash-detail').style.display = 'none';
+  document.getElementById('dash-main').style.display = 'block';
+}
+
+function printAthleteSheet(id, blank=false) {
+  const athlete = athletes.find(a => a.id === id);
+  if (!athlete || !athlete.protocols.length) { toast('No protocols assigned', 'error'); return; }
+
+  const today = new Date();
+  const weekDate = `${today.getMonth()+1}/${today.getDate()}/${today.getFullYear()}`;
+
+  // Build sheet data for this single athlete
+  const sheets = [];
+  for (const proto of athlete.protocols) {
+    const exs = PROTOCOLS[proto]?.exercises || [];
+    for (const day of ['1','2']) {
+      const lastSess = blank ? null : getLastSession(athlete.id, proto, day);
+      const exercises = exs.map((exName, exIdx) => {
+        if (blank) {
+          return { name: exName, suggested: '', repTarget: '', action: 'none',
+                   isBand: false, isTime: false, noProgress: true };
+        }
+        const rule       = getRuleForExercise(exName);
+        const lastExData = lastSess?.exerciseData?.[exIdx] || null;
+        const suggestion = (lastExData && rule && rule.type !== 'none')
+          ? calcProgression(lastExData, rule) : null;
+
+        let suggested = '', repTarget = '', action = 'none';
+        if (!rule || rule.type === 'none') {
+          suggested = lastExData?.sets?.[0]?.wt != null ? lastExData.sets[0].wt + 'lb' : '';
+          repTarget = ''; action = 'none';
+        } else if (!suggestion) {
+          suggested = ''; repTarget = rule.type==='time' ? rule.timeTarget+'s' : rule.repTarget+' reps'; action = 'new';
+        } else if (suggestion.action === 'increase') {
+          suggested = rule.type==='band' ? '' : (suggestion.suggestedWt != null ? suggestion.suggestedWt+'lb' : '');
+          repTarget = rule.type==='time' ? rule.timeTarget+'s' : rule.repTarget+' reps'; action = 'increase';
+        } else if (suggestion.action === 'band') {
+          suggested = suggestion.atMax ? (suggestion.currentBand||'')+'★' : (suggestion.nextBand||'');
+          repTarget = rule.repTarget+' reps'; action = 'band';
+        } else if (suggestion.action === 'stage') {
+          suggested = `${suggestion.currentStage} → ${suggestion.nextStage}`;
+          repTarget = ''; action = 'stage';
+        } else if (suggestion.action === 'stage-max') {
+          suggested = (suggestion.currentStage||'')+'★'; repTarget = ''; action = 'stage-max';
+        } else {
+          suggested = rule.type==='band' ? (suggestion.currentBand||'') : (suggestion.suggestedWt != null ? suggestion.suggestedWt+'lb' : '');
+          repTarget = rule.type==='time' ? rule.timeTarget+'s' : rule.repTarget+' reps'; action = 'maintain';
+        }
+        return { name: exName, suggested, repTarget, action,
+                 isBand: rule?.type==='band', isTime: rule?.type==='time',
+                 noProgress: !rule || rule.type==='none' };
+      });
+      sheets.push({ proto, day, exercises });
+    }
+  }
+
+  const athData = [{
+    name: athlete.name,
+    shoulderSide: athlete.shoulderSide || null,
+    kneeSide: athlete.kneeSide || null,
+    weekDate,
+    sheets
+  }];
+
+  const html = buildPrintHTML(athData, weekDate);
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href  = url;
+  link.download = `${athlete.name.replace(/[^a-z0-9]/gi,'_')}_sheet${blank?'_blank':''}.html`;
+  link.click();
+  URL.revokeObjectURL(url);
+  toast(`${athlete.name} — sheet downloaded`, 'success');
+}
+
+// ── PDF IMPORT ────────────────────────────────────────────────
+async function handlePdfUpload(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  document.getElementById('import-progress').style.display = 'block';
+  document.getElementById('import-preview').style.display = 'none';
+  const log = document.getElementById('import-log');
+  log.innerHTML = '';
+
+  const logLine = (msg, color='var(--text2)') => {
+    log.innerHTML += `<div style="color:${color}">${msg}</div>`;
+    log.scrollTop = log.scrollHeight;
+  };
+
+  logLine('Reading PDF…');
+  const base64 = await fileToBase64(file);
+  logLine(`PDF loaded — ${(file.size/1024).toFixed(0)} KB`);
+  logLine('Sending to Claude for extraction…');
+
+  const prompt = `You are reading scanned maintenance exercise tracking sheets. Each page is one protocol sheet for one athlete.
+
+Extract ALL sessions. For each page return a JSON object with:
+- athleteName (from the "Name:" field — it will be a last name like "Smith" or "Jones B.")
+- protocol: one of "hamstring", "groin", "patellar", "shoulder"
+- weekOf (from "Week of:" field, or null)
+- day1: { date, exercises: [{name, sets:[{wt,reps},...], rir}], initials }
+- day2: { date, exercises: [{name, sets:[{wt,reps},...], rir}], initials }
+
+Return ONLY a JSON array — no other text. If a field is blank return null. If weight or reps cells are empty return null for those values.`;
+
+  try {
+    // Check Render URL is configured
+    if (!CONFIG.RENDER_URL || CONFIG.RENDER_URL === 'YOUR_RENDER_URL') {
+      logLine('⚠ Render server URL not configured. See Setup guide in sidebar.', 'var(--amber)');
+      return;
+    }
+
+    const resp = await fetch(`${CONFIG.RENDER_URL}/extract-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pdf_base64: base64, weekDate: '' })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      logLine('Server error: ' + (err.error || resp.statusText), 'var(--red)');
+      return;
+    }
+
+    const data = await resp.json();
+    if (data.error) { logLine('Extraction error: ' + data.error, 'var(--red)'); return; }
+
+    logLine('Extraction complete. Parsing…');
+    const pages = data.pages;
+    if (!Array.isArray(pages)) { logLine('Unexpected response from server', 'var(--red)'); return; }
+
+    logLine(`Found ${pages.length} page(s)`, 'var(--green)');
+
+    // Convert pages → sessions
+    importedSessions = [];
+    for (const page of pages) {
+      const athlete = athletes.find(a => a.name.toLowerCase() === page.athleteName?.toLowerCase())
+                   || athletes.find(a => a.name.toLowerCase().startsWith(page.athleteName?.toLowerCase()));
+      if (!athlete) { logLine(`⚠ Could not match athlete: "${page.athleteName}"`, 'var(--amber)'); continue; }
+      logLine(`✓ ${athlete.name} — ${page.protocol}`);
+      for (const [dayKey, dayData] of [['day1', page.day1], ['day2', page.day2]]) {
+        if (!dayData) continue;
+        importedSessions.push({
+          id: Date.now().toString() + Math.random().toString(36).slice(2,6),
+          athleteId: athlete.id, athleteName: athlete.name,
+          protocol: page.protocol, day: dayKey==='day1'?'1':'2',
+          side: 'bilateral', date: dayData.date||'', initials: dayData.initials||'',
+          notes: `Imported from scan (week of ${page.weekOf||'?'})`,
+          exerciseData: (dayData.exercises||[]).map(ex => ({
+            name: ex.name, sets: ex.sets||[], rir: ex.rir
+          })),
+          ts: Date.now(), source: 'pdf'
+        });
+      }
+    }
+
+    logLine(`\nReady to import ${importedSessions.length} session(s)`, 'var(--green)');
+    renderImportPreview();
+  } catch(err) {
+    logLine('Error: ' + err.message, 'var(--red)');
+  }
+}
+
+function renderImportPreview() {
+  document.getElementById('import-preview').style.display = 'block';
+  const tbody = document.getElementById('import-tbody');
+  tbody.innerHTML = importedSessions.map(s => {
+    const ex0 = s.exerciseData?.[0];
+    const s1 = ex0?.sets?.[0];
+    const preview = (s1?.wt||s1?.reps) ? `${s1.wt||'—'} × ${s1.reps||'—'}` : '—';
+    return `<tr>
+      <td style="font-weight:500">${s.athleteName}</td>
+      <td>${PROTOCOLS[s.protocol]?.label||s.protocol}</td>
+      <td>Day ${s.day}</td>
+      <td>${s.date||'—'}</td>
+      <td style="font-family:var(--mono)">${preview}</td>
+      <td style="font-family:var(--mono)">${s.exerciseData?.[0]?.rir??'—'}</td>
+      <td>${s.initials||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+async function commitImport() {
+  if (!importedSessions.length) return;
+  sessions.push(...importedSessions);
+  if (accessToken) {
+    const rows = importedSessions.map(sessionToRow);
+    await sheetsAppend(`${SHEET_SESSIONS}!A2`, rows);
+    toast(`${importedSessions.length} sessions written to sheet`, 'success');
+  } else {
+    toast(`${importedSessions.length} sessions added (demo mode)`, 'success');
+  }
+  importedSessions = [];
+  document.getElementById('import-preview').style.display = 'none';
+  document.getElementById('import-progress').style.display = 'none';
+  document.getElementById('pdf-input').value = '';
+  renderDashboard();
+}
+
+function fileToBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// ── ATHLETES VIEW ─────────────────────────────────────────────
+function addAthlete() {
+  const name = document.getElementById('new-name').value.trim();
+  if (!name) { toast('Enter a name', 'error'); return; }
+  if (athletes.find(a => a.name.toLowerCase() === name.toLowerCase())) { toast('Already exists', 'error'); return; }
+  const protocols = [];
+  if (document.getElementById('np-ham').checked) protocols.push('hamstring');
+  if (document.getElementById('np-groin').checked) protocols.push('groin');
+  if (document.getElementById('np-pat').checked) protocols.push('patellar');
+  if (document.getElementById('np-sho').checked) protocols.push('shoulder');
+  const a = { id: Date.now().toString(), name, protocols, shoulderSide: null, kneeSide: null };
+  athletes.push(a);
+  document.getElementById('new-name').value = '';
+  renderAthletes();
+  renderLogAthletes();
+  toast(`${name} added`, 'success');
+}
+
+function removeAthlete(id) {
+  const a = athletes.find(x=>x.id===id);
+  if (!a || !confirm(`Remove ${a.name}?`)) return;
+  athletes = athletes.filter(x=>x.id!==id);
+  sessions = sessions.filter(x=>x.athleteId!==id);
+  renderAthletes(); renderLogAthletes();
+  toast('Removed');
+}
+
+function renderAthletes() {
+  document.getElementById('athlete-count').textContent = `(${athletes.length})`;
+  const tbody = document.getElementById('athletes-tbody');
+  if (!athletes.length) { tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px">No athletes</td></tr>'; return; }
+  tbody.innerHTML = [...athletes].sort((a,b)=>a.name.localeCompare(b.name)).map(a => {
+    const cnt = sessions.filter(s=>s.athleteId===a.id).length;
+    const tags = a.protocols.map(p=>`<span class="tag">${PROTOCOLS[p]?.label||p}</span>`).join('') || '<span style="color:var(--text3)">None</span>';
+    return `<tr><td style="font-weight:500">${a.name}</td><td>${tags}</td><td style="font-family:var(--mono)">${cnt}</td><td><button class="btn btn-ghost btn-sm" onclick="removeAthlete('${a.id}')">Remove</button></td></tr>`;
+  }).join('');
+}
+
+function renderLogAthletes() {
+  const sel = document.getElementById('log-athlete');
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">— select athlete —</option>';
+  [...athletes].sort((a,b)=>a.name.localeCompare(b.name)).forEach(a => {
+    const o = document.createElement('option');
+    o.value = a.id; o.textContent = a.name;
+    if (a.id === cur) o.selected = true;
+    sel.appendChild(o);
+  });
+}
+
+// ── NAV ───────────────────────────────────────────────────────
+function nav(view) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.getElementById('nav-'+view).classList.add('active');
+  if (view==='dashboard') renderDashboard();
+  if (view==='athletes') renderAthletes();
+  if (view==='log') renderLogAthletes();
+  if (view==='weekly') renderWeeklyPreview();
+  if (view==='progression') renderProgRules();
+}
+
+// ── WEEKLY SHEETS ─────────────────────────────────────────────
+
+// Build a flat list of all athlete+protocol+exercise progressions
+function buildWeeklyProgressions(protoFilter) {
+  const rows = [];
+  for (const athlete of [...athletes].sort((a,b)=>a.name.localeCompare(b.name))) {
+    const protos = protoFilter ? athlete.protocols.filter(p=>p===protoFilter) : athlete.protocols;
+    for (const proto of protos) {
+      const exs = PROTOCOLS[proto]?.exercises || [];
+      for (const [day, dayLabel] of [['1','Day 1'],['2','Day 2']]) {
+        const lastSess = getLastSession(athlete.id, proto, day);
+        exs.forEach((exName, exIdx) => {
+          const rule = getRuleForExercise(exName);
+          const lastExData = lastSess?.exerciseData?.[exIdx] || null;
+          const suggestion = lastExData ? calcProgression(lastExData, rule) : null;
+          if (rule && rule.type !== 'none') {
+            rows.push({ athlete, proto, day, dayLabel, exName, exIdx, rule, lastExData, suggestion });
+          }
+        });
+      }
+    }
+  }
+  return rows;
+}
+
+function renderWeeklyPreview() {
+  const protoFilter = document.getElementById('week-proto-filter').value;
+  const blank       = document.getElementById('week-blank').checked;
+  const tbody       = document.getElementById('weekly-preview-tbody');
+
+  // Set default week date
+  const wd = document.getElementById('week-date');
+  if (!wd.value) {
+    const t = new Date();
+    const day = t.getDay();
+    const diff = day === 0 ? 1 : 8 - day;
+    t.setDate(t.getDate() + diff);
+    wd.value = `${t.getMonth()+1}/${t.getDate()}/${t.getFullYear()}`;
+  }
+
+  if (blank) {
+    const count = athletes.filter(a => !protoFilter || a.protocols.includes(protoFilter)).length;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--color-text-secondary)">
+      Blank mode — all set boxes will be empty. ${count} athlete sheet${count!==1?'s':''} will be generated.
+    </td></tr>`;
+    return;
+  }
+
+  const rows = buildWeeklyProgressions(protoFilter);
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--color-text-tertiary);padding:24px">No progressible exercises found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const { athlete, proto, dayLabel, exName, rule, lastExData, suggestion } = r;
+    const lastWtStr = lastExData?.sets?.[0]?.wt != null
+      ? (rule.type==='band' ? (BAND_SEQ[lastExData.sets[0].wt]||lastExData.sets[0].wt) : lastExData.sets[0].wt+'lb')
+      : '—';
+
+    let suggStr = '—', repStr = '—', badge = '';
+    if (!suggestion) {
+      suggStr = '<span style="color:var(--text3)">No prior data</span>';
+      badge = '<span class="badge badge-gray">New</span>';
+    } else if (suggestion.action === 'increase') {
+      suggStr = rule.type==='weight'||rule.type==='time'
+        ? `<strong style="color:var(--accent)">${suggestion.suggestedWt}lb</strong>`
+        : '—';
+      repStr = rule.type==='time' ? `${rule.timeTarget}s` : `${rule.repTarget} reps`;
+      badge = '<span class="badge badge-green">↑ Progress</span>';
+    } else if (suggestion.action === 'band') {
+      suggStr = suggestion.atMax
+        ? `<span style="color:var(--amber)">Max (${suggestion.currentBand})</span>`
+        : `<strong style="color:var(--amber)">${suggestion.nextBand}</strong>`;
+      repStr = `${rule.repTarget} reps`;
+      badge = suggestion.atMax ? '<span class="badge badge-amber">Max</span>' : '<span class="badge badge-amber">↑ Band</span>';
+    } else {
+      suggStr = rule.type==='band'
+        ? (suggestion.currentBand||'—')
+        : (suggestion.suggestedWt != null ? suggestion.suggestedWt+'lb' : '—');
+      repStr = rule.type==='time' ? `${rule.timeTarget}s` : `${rule.repTarget} reps`;
+      badge = '<span class="badge badge-gray">→ Maintain</span>';
+    }
+
+    return `<tr>
+      <td style="font-weight:500">${athlete.name}</td>
+      <td><span class="tag">${PROTOCOLS[proto]?.label}</span> <span style="color:var(--text3);font-size:11px">${dayLabel}</span></td>
+      <td style="font-size:12px">${exName}</td>
+      <td style="font-family:var(--mono);font-size:12px">${lastWtStr}</td>
+      <td>${suggStr}</td>
+      <td style="font-family:var(--mono);font-size:12px">${repStr}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── DOCX GENERATION ──────────────────────────────────────────
+
+function buildAthleteSheetData(protoFilter, blank=false) {
+  const athleteData = [];
+  for (const athlete of [...athletes].sort((a,b) => a.name.localeCompare(b.name))) {
+    const protos = protoFilter
+      ? athlete.protocols.filter(p => p === protoFilter)
+      : athlete.protocols;
+    if (!protos.length) continue;
+
+    const sheets = [];
+    for (const proto of protos) {
+      const exs = PROTOCOLS[proto]?.exercises || [];
+      for (const day of ['1','2']) {
+        const lastSess = blank ? null : getLastSession(athlete.id, proto, day);
+        const exercises = exs.map((exName, exIdx) => {
+          if (blank) {
+            return { name: exName, suggested: '', repTarget: '', action: 'none',
+                     isBand: false, isTime: false, noProgress: true };
+          }
+          const rule       = getRuleForExercise(exName);
+          const lastExData = lastSess?.exerciseData?.[exIdx] || null;
+          const suggestion = (lastExData && rule && rule.type !== 'none')
+            ? calcProgression(lastExData, rule) : null;
+
+          let suggested = '', repTarget = '', action = 'none';
+          if (!rule || rule.type === 'none') {
+            suggested = lastExData?.sets?.[0]?.wt != null ? lastExData.sets[0].wt + 'lb' : '';
+            repTarget = ''; action = 'none';
+          } else if (!suggestion) {
+            suggested = ''; repTarget = rule.type === 'time' ? rule.timeTarget + 's' : rule.repTarget + ' reps'; action = 'new';
+          } else if (suggestion.action === 'increase') {
+            suggested = rule.type === 'band' ? '' : (suggestion.suggestedWt != null ? suggestion.suggestedWt + 'lb' : '');
+            repTarget = rule.type === 'time' ? rule.timeTarget + 's' : rule.repTarget + ' reps'; action = 'increase';
+          } else if (suggestion.action === 'band') {
+            suggested = suggestion.atMax ? (suggestion.currentBand||'')+'★' : (suggestion.nextBand||'');
+            repTarget = rule.repTarget + ' reps'; action = 'band';
+          } else if (suggestion.action === 'stage') {
+            suggested = `${suggestion.currentStage} → ${suggestion.nextStage}`;
+            repTarget = ''; action = 'stage';
+          } else if (suggestion.action === 'stage-max') {
+            suggested = (suggestion.currentStage||'')+'★';
+            repTarget = ''; action = 'stage-max';
+          } else {
+            suggested = rule.type === 'band' ? (suggestion.currentBand||'') : (suggestion.suggestedWt != null ? suggestion.suggestedWt+'lb' : '');
+            repTarget = rule.type === 'time' ? rule.timeTarget+'s' : rule.repTarget+' reps'; action = 'maintain';
+          }
+          return { name: exName, suggested, repTarget, action,
+                   isBand: rule?.type==='band', isTime: rule?.type==='time',
+                   noProgress: !rule || rule.type==='none' };
+        });
+        sheets.push({ proto, day, exercises });
+      }
+    }
+    athleteData.push({
+      name: athlete.name,
+      shoulderSide:  athlete.shoulderSide  || null,
+      kneeSide:      athlete.kneeSide      || null,
+      hamstringSide: athlete.hamstringSide || null,
+      sheets
+    });
+  }
+  return athleteData;
+}
+
+async function generateWeeklyDoc() {
+  const weekDate    = document.getElementById('week-date').value || 'Week of ?';
+  const protoFilter = document.getElementById('week-proto-filter').value;
+  const blank       = document.getElementById('week-blank').checked;
+  const btn = document.getElementById('gen-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Building…';
+
+  try {
+    const athleteData = buildAthleteSheetData(protoFilter, blank);
+    athleteData.forEach(a => a.weekDate = weekDate);
+    const html = buildPrintHTML(athleteData, weekDate);
+    const blob = new Blob([html], { type: 'text/html' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `maintenance_sheets_${weekDate.replace(/\//g,'-')}${blank?'_blank':''}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast(blank ? 'Blank sheets downloaded' : 'Sheets downloaded — open file then Print → Save as PDF', 'success');
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+    console.error(e);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg> Download PDF';
+}
+function buildPrintableHTML_OLD(athleteData, weekDate) { if(false) {
+  const PROTO_COLORS = {
+    'Hamstring':      '#1a3a2a',
+    'Groin':          '#2a1a3a',
+    'Patellar tendon':'#1a2a3a',
+    'Shoulder':       '#3a2a1a',
+  };
+  const ACTION_COLOR = { increase:'#2d5a1b', band:'#5a3d0a', maintain:'#1a2a3a', new:'#2a2a2a' };
+  const ACTION_LABEL = { increase:'↑ PROGRESS', band:'↑ BAND', maintain:'→ MAINTAIN', new:'NEW' };
+
+  const sheets = athleteData.flatMap(({ name, sheets }) =>
+    sheets.map(sheet => ({ name, ...sheet }))
+  );
+
+  const sheetPages = sheets.map(({ name, protocol, day, exercises }) => {
+    const headerColor = PROTO_COLORS[protocol] || '#1a1a1a';
+    const exRows = exercises.map(ex => `
+      <tr>
+        <td class="ex-name">${ex.name}</td>
+        <td class="suggested ${ex.action}">${ex.suggested || '—'}</td>
+        <td class="rep-target">${ex.repTarget}</td>
+        <td class="set-cell"><input type="text" placeholder="___"> / <input type="text" placeholder="___"> reps</td>
+        <td class="set-cell"><input type="text" placeholder="___"> / <input type="text" placeholder="___"> reps</td>
+        <td class="set-cell"><input type="text" placeholder="___"> / <input type="text" placeholder="___"> reps</td>
+        <td class="rir-cell"><input type="text" placeholder="__"></td>
+      </tr>`).join('');
+
+    return `<div class="sheet-page">
+      <div class="sheet-header" style="background:${headerColor}">
+        <div class="sheet-title">${protocol} <span class="day-tag">${day}</span></div>
+        <div class="sheet-meta">
+          <span class="meta-item">Name: <strong>${name}</strong></span>
+          <span class="meta-item">Week of: <strong>${weekDate}</strong></span>
+        </div>
+      </div>
+      <table class="ex-table">
+        <thead>
+          <tr>
+            <th style="width:22%">Exercise</th>
+            <th style="width:12%">Suggested load</th>
+            <th style="width:10%">Rep target</th>
+            <th style="width:18%">Set 1 (wt / reps)</th>
+            <th style="width:18%">Set 2 (wt / reps)</th>
+            <th style="width:18%">Set 3 (wt / reps)</th>
+            <th style="width:7%">RIR</th>
+          </tr>
+        </thead>
+        <tbody>${exRows}</tbody>
+      </table>
+      <div class="sheet-footer">
+        <span>Staff initials: ________</span>
+        <span>Notes: ________________________________</span>
+        <span>ATC/ATS: ________</span>
+      </div>
+    </div>`;
+  }).join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Maintenance Sheets — ${weekDate}</title>
+<style>
+  @page { size: landscape; margin: 12mm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, sans-serif; font-size: 11px; background: #fff; color: #111; }
+
+  .sheet-page {
+    width: 100%;
+    page-break-after: always;
+    margin-bottom: 0;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .sheet-page:last-child { page-break-after: avoid; }
+
+  .sheet-header {
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #fff;
+  }
+  .sheet-title { font-size: 15px; font-weight: 700; letter-spacing: .02em; }
+  .day-tag {
+    font-size: 11px; font-weight: 400; background: rgba(255,255,255,.2);
+    padding: 2px 7px; border-radius: 10px; margin-left: 8px; letter-spacing:.04em;
+  }
+  .sheet-meta { font-size: 12px; display: flex; gap: 24px; }
+  .meta-item { opacity: .85; }
+  .meta-item strong { opacity: 1; font-size: 13px; }
+
+  .ex-table { width: 100%; border-collapse: collapse; }
+  .ex-table th {
+    background: #f0f0f0; text-align: left; padding: 6px 8px;
+    font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+    color: #555; border-bottom: 2px solid #ddd;
+  }
+  .ex-table td { padding: 7px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+  .ex-table tr:last-child td { border-bottom: none; }
+  .ex-table tr:nth-child(even) td { background: #fafafa; }
+
+  .ex-name { font-weight: 500; font-size: 11px; }
+
+  .suggested {
+    font-weight: 700; font-size: 12px; text-align: center;
+    padding: 4px 6px !important; border-radius: 4px;
+  }
+  .suggested.increase { background: #e8f5d0; color: #2d5a1b; }
+  .suggested.band     { background: #fef3d0; color: #7a4d00; }
+  .suggested.maintain { background: #e8f0fe; color: #1a3a6a; }
+  .suggested.new      { background: #f0f0f0; color: #555; }
+
+  .rep-target { text-align: center; font-size: 11px; color: #444; font-weight: 500; }
+
+  .set-cell { text-align: center; }
+  .set-cell input {
+    width: 38px; border: none; border-bottom: 1px solid #bbb;
+    text-align: center; font-size: 11px; background: transparent; padding: 1px 2px;
+  }
+
+  .rir-cell { text-align: center; }
+  .rir-cell input {
+    width: 28px; border: none; border-bottom: 1px solid #bbb;
+    text-align: center; font-size: 11px; background: transparent;
+  }
+
+  .sheet-footer {
+    display: flex; justify-content: space-between;
+    padding: 7px 14px; background: #f7f7f7;
+    border-top: 1px solid #ddd; font-size: 10px; color: #666;
+  }
+
+  /* Screen preview styles */
+  @media screen {
+    body { background: #e0e0e0; padding: 20px; }
+    .sheet-page { max-width: 1050px; margin: 0 auto 24px; box-shadow: 0 2px 8px rgba(0,0,0,.15); }
+    .print-btn {
+      position: fixed; top: 16px; right: 16px;
+      background: #111; color: #fff; border: none; border-radius: 8px;
+      padding: 10px 20px; font-size: 14px; cursor: pointer; font-weight: 500;
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    }
+    .print-btn:hover { background: #333; }
+    .legend {
+      max-width: 1050px; margin: 0 auto 16px; background: #fff;
+      border-radius: 4px; padding: 10px 14px; font-size: 11px;
+      display: flex; gap: 16px; align-items: center;
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .legend-swatch { width: 24px; height: 14px; border-radius: 3px; }
+  }
+  @media print {
+    .print-btn, .legend { display: none; }
+    body { background: #fff; padding: 0; }
+  }
+</style>
+</head>
+<body>
+<button class="print-btn" onclick="window.print()">🖨 Print / Save PDF</button>
+<div class="legend">
+  <strong style="margin-right:4px">Legend:</strong>
+  <div class="legend-item"><div class="legend-swatch" style="background:#e8f5d0"></div> ↑ Progress (increase load)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#fef3d0"></div> ↑ Band (advance color)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#e8f0fe"></div> → Maintain (same load)</div>
+  <div class="legend-item"><div class="legend-swatch" style="background:#f0f0f0"></div> New (first session)</div>
+</div>
+${sheetPages}
+</body>
+</html>`;
+  } // end OLD
+}
+
+function buildPrintableHTML(athleteData, weekDate) {
+  const PROTO_COLORS = {
+    'Hamstring':       '#1e3d2f',
+    'Groin':           '#2d1e3d',
+    'Patellar tendon': '#1e2d3d',
+    'Shoulder':        '#3d2e1e',
+  };
+
+  const sheetPages = athleteData.flatMap(({ name, sheets }) =>
+    sheets.map(({ protocol, dayLabel, exercises }) => {
+      const hdrColor = PROTO_COLORS[protocol] || '#222';
+
+      const exRows = exercises.map(ex => {
+        // Suggested load cell styling
+        let suggClass = 'sugg-none', suggText = ex.suggested || '—';
+        if      (ex.action === 'increase') suggClass = 'sugg-up';
+        else if (ex.action === 'band')     suggClass = 'sugg-band';
+        else if (ex.action === 'maintain') suggClass = 'sugg-same';
+        else if (ex.action === 'new')      suggClass = 'sugg-new';
+
+        // Last session context
+        const lastCtx = (ex.lastWt != null || ex.lastReps != null)
+          ? `<div class="last-val">Last: ${ex.lastWt != null ? ex.lastWt+'lb' : ''}${ex.lastWt != null && ex.lastReps != null ? ' · ' : ''}${ex.lastReps != null ? ex.lastReps+(ex.isTime?'s':' reps') : ''}${ex.lastRir != null ? ' · RIR '+ex.lastRir : ''}</div>`
+          : '';
+
+        // Rep target — blank for no-progression exercises
+        const repTgt = ex.noProgress ? '' : ex.repTarget;
+
+        return `<tr>
+          <td class="ex-name-cell">${ex.name}${lastCtx}</td>
+          <td class="${suggClass}">${suggText}</td>
+          <td class="rep-tgt-cell">${repTgt}</td>
+          <td class="set-cell"><span class="set-inp"></span> / <span class="set-inp"></span>${ex.isTime ? 's' : ''}</td>
+          <td class="set-cell"><span class="set-inp"></span> / <span class="set-inp"></span>${ex.isTime ? 's' : ''}</td>
+          <td class="set-cell"><span class="set-inp"></span> / <span class="set-inp"></span>${ex.isTime ? 's' : ''}</td>
+          <td class="rir-cell"><span class="set-inp"></span></td>
+        </tr>`;
+      }).join('');
+
+      return `<div class="sheet">
+        <div class="sheet-hdr" style="background:${hdrColor}">
+          <div class="sheet-hdr-left">
+            <span class="proto-name">${protocol}</span>
+            <span class="day-pill">${dayLabel}</span>
+          </div>
+          <div class="sheet-hdr-right">
+            <span class="meta-field">Name: <strong>${name}</strong></span>
+            <span class="meta-field">Week of: <strong>${weekDate}</strong></span>
+            <span class="meta-field">ATC: <span class="blank-line">________</span></span>
+          </div>
+        </div>
+        <table class="ex-tbl">
+          <thead>
+            <tr>
+              <th style="width:24%">Exercise</th>
+              <th style="width:11%">Suggested load</th>
+              <th style="width:9%">Target</th>
+              <th style="width:17%">Set 1 (wt / reps)</th>
+              <th style="width:17%">Set 2 (wt / reps)</th>
+              <th style="width:17%">Set 3 (wt / reps)</th>
+              <th style="width:5%">RIR</th>
+            </tr>
+          </thead>
+          <tbody>${exRows}</tbody>
+        </table>
+        <div class="sheet-footer">
+          <span>Date: ___________</span>
+          <span>Notes: _______________________________________</span>
+        </div>
+      </div>`;
+    })
+  ).join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Maintenance Sheets — ${weekDate}</title>
+<style>
+  @page { size: landscape; margin: 10mm 12mm; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: Arial, Helvetica, sans-serif; font-size: 11px; color: #111; background: #ddd; }
+
+  .sheet {
+    width: 100%; background: #fff;
+    page-break-after: always; break-after: page;
+    border: 1px solid #bbb; border-radius: 5px; overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .sheet:last-child { page-break-after: avoid; break-after: avoid; }
+
+  /* Header */
+  .sheet-hdr {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 9px 14px; color: #fff;
+  }
+  .sheet-hdr-left { display: flex; align-items: center; gap: 10px; }
+  .proto-name { font-size: 16px; font-weight: 700; letter-spacing: .02em; }
+  .day-pill {
+    font-size: 10px; background: rgba(255,255,255,.18);
+    padding: 3px 9px; border-radius: 12px; letter-spacing: .05em; font-weight: 500;
+  }
+  .sheet-hdr-right { display: flex; gap: 20px; align-items: center; }
+  .meta-field { font-size: 12px; opacity: .9; }
+  .meta-field strong { font-size: 13px; opacity: 1; }
+  .blank-line { display: inline-block; border-bottom: 1px solid rgba(255,255,255,.6); min-width: 60px; }
+
+  /* Table */
+  .ex-tbl { width: 100%; border-collapse: collapse; }
+  .ex-tbl th {
+    background: #f2f2f2; text-align: left; padding: 5px 8px;
+    font-size: 9px; text-transform: uppercase; letter-spacing: .07em;
+    color: #555; border-bottom: 2px solid #ddd; font-weight: 600;
+  }
+  .ex-tbl td { padding: 7px 8px; border-bottom: 1px solid #eee; vertical-align: middle; }
+  .ex-tbl tr:last-child td { border-bottom: none; }
+  .ex-tbl tr:nth-child(even) td { background: #fafafa; }
+
+  .ex-name-cell { font-weight: 500; font-size: 11px; }
+  .last-val { font-size: 9px; color: #888; margin-top: 2px; font-style: italic; }
+
+  /* Suggested load */
+  .sugg-up   { font-weight: 700; font-size: 12px; text-align: center; background: #e8f5d0; color: #2a5a18; padding: 4px 6px !important; border-radius: 3px; }
+  .sugg-band { font-weight: 700; font-size: 12px; text-align: center; background: #fef3d0; color: #7a4800; padding: 4px 6px !important; border-radius: 3px; }
+  .sugg-same { font-weight: 600; font-size: 11px; text-align: center; background: #e8f0fe; color: #1a3a6a; padding: 4px 6px !important; border-radius: 3px; }
+  .sugg-new  { font-size: 11px; text-align: center; background: #f0f0f0; color: #666; padding: 4px 6px !important; border-radius: 3px; }
+  .sugg-none { font-size: 11px; text-align: center; color: #aaa; }
+
+  .rep-tgt-cell { text-align: center; font-size: 11px; color: #333; font-weight: 500; }
+
+  /* Set cells — write-in lines */
+  .set-cell { text-align: center; white-space: nowrap; color: #666; font-size: 11px; }
+  .set-inp {
+    display: inline-block; min-width: 32px; height: 16px;
+    border-bottom: 1px solid #aaa; vertical-align: bottom; margin: 0 2px;
+  }
+  .rir-cell { text-align: center; }
+
+  /* Footer */
+  .sheet-footer {
+    display: flex; justify-content: space-between;
+    padding: 6px 14px; background: #f7f7f7;
+    border-top: 1px solid #ddd; font-size: 10px; color: #666;
+  }
+
+  /* Screen preview */
+  @media screen {
+    body { padding: 20px; }
+    .sheet { max-width: 1060px; margin: 0 auto 28px; box-shadow: 0 2px 12px rgba(0,0,0,.18); border-radius: 6px; }
+    .print-bar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      background: #111; color: #fff; padding: 10px 20px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-family: Arial, sans-serif; font-size: 13px;
+    }
+    .print-bar-title { font-weight: 600; }
+    .print-bar-sub { font-size: 11px; opacity: .6; margin-top: 1px; }
+    .print-btn {
+      background: #c8f060; color: #000; border: none; border-radius: 6px;
+      padding: 8px 18px; font-size: 13px; cursor: pointer; font-weight: 600;
+    }
+    .print-btn:hover { background: #d4f570; }
+    .legend {
+      max-width: 1060px; margin: 64px auto 16px;
+      background: #fff; border-radius: 5px; padding: 8px 14px;
+      display: flex; gap: 16px; align-items: center; font-size: 11px;
+      box-shadow: 0 1px 4px rgba(0,0,0,.1);
+    }
+    .legend-item { display: flex; align-items: center; gap: 5px; }
+    .swatch { width: 22px; height: 13px; border-radius: 2px; }
+  }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .print-bar, .legend { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="print-bar">
+  <div>
+    <div class="print-bar-title">Maintenance Sheets — ${weekDate}</div>
+    <div class="print-bar-sub">Open browser print dialog (Ctrl/Cmd+P) · Set paper to Landscape · Enable "Print backgrounds"</div>
+  </div>
+  <button class="print-btn" onclick="window.print()">🖨 Print / Save PDF</button>
+</div>
+<div class="legend">
+  <strong>Legend:</strong>
+  <div class="legend-item"><div class="swatch" style="background:#e8f5d0"></div>↑ Progress — increase load</div>
+  <div class="legend-item"><div class="swatch" style="background:#fef3d0"></div>↑ Band — advance color</div>
+  <div class="legend-item"><div class="swatch" style="background:#e8f0fe"></div>→ Maintain — same load</div>
+  <div class="legend-item"><div class="swatch" style="background:#f0f0f0"></div>New — first session</div>
+  <div class="legend-item"><div class="swatch" style="background:#fff;border:1px solid #ccc"></div>— No progression rule</div>
+</div>
+${sheetPages}
+</body>
+</html>`;
+}
+
+
+
+
+
+
+// ── PRINT HTML GENERATOR v4 — optimised for 4-protocol landscape ─────────
+const PRINT_PROTO_EXERCISES = {
+  hamstring: ['Hamstring Gliders','Eccentric Hamstring Curl (2 up, 1 down)'],
+  groin:     ['Isometric @ 0°','Valslyder Diag.','Valslyder Horiz.'],
+  patellar:  ['60° Knee Ext. Isometric','Wall Sit (DL or SL)'],
+  shoulder:  ['OH Kettlebell Carry','Serratus Press Away','Banded I-Y-T Circles'],
+};
+const PRINT_PROTO_TITLES = {
+  hamstring:'Hamstring Maintenance', groin:'Groin Maintenance',
+  patellar:'Quad Maintenance', shoulder:'Shoulder Maintenance',
+};
+const PRINT_PROTO_COLORS = {
+  hamstring:'#BB0000', groin:'#BB0000', patellar:'#BB0000', shoulder:'#BB0000',
+};
+const PRINT_ROW_BG = {
+  hamstring:['#fff','#f5f5f5'], groin:['#fff','#f5f5f5','#fff'],
+  patellar:['#fff','#f5f5f5'],  shoulder:['#fff','#f5f5f5','#fff'],
+};
+const PRINT_ACTION_FILL  = {increase:'#e8f5d0',band:'#fef3d0',stage:'#fef3d0','stage-max':'#f5f5f5',maintain:'#e8f0fe',new:'#f5f5f5',none:'#fff'};
+const PRINT_ACTION_COLOR = {increase:'#2d5a18',band:'#7a4800',stage:'#7a4800','stage-max':'#555',maintain:'#1a2a3a',new:'#555',none:'#999'};
+const PRINT_SIDE_KEY     = {R:'Right',L:'Left',B:'Bilateral'};
+const PRINT_SIDE_LABELS  = ['Right','Left','Bilateral'];
+
+function pEsc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function buildDayCol(proto, dayNum, exercises) {
+  const exNames = PRINT_PROTO_EXERCISES[proto] || [];
+  const rowBgs  = PRINT_ROW_BG[proto] || ['#fff'];
+  const color   = PRINT_PROTO_COLORS[proto];
+
+  const repLabel = proto === 'patellar' ? 'Time' : 'Reps';
+  const hdr = `<tr>
+    <th colspan="9" class="day-hdr" style="background:${color}">Day ${dayNum}
+      <span class="date-field">Date: <span class="date-line">___________</span></span>
+    </th>
+  </tr>
+  <tr class="col-hdr-row">
+    <th class="col-ex">Exercise</th>
+    <th class="col-wt">S1 Wt</th><th class="col-rp">${repLabel}</th>
+    <th class="col-wt">S2 Wt</th><th class="col-rp">${repLabel}</th>
+    <th class="col-wt">S3 Wt</th><th class="col-rp">${repLabel}</th>
+    <th class="col-rir">RIR</th>
+    <th class="col-atc">ATC</th>
+  </tr>`;
+
+  const rows = exNames.map((exName, i) => {
+    const bg     = rowBgs[i % rowBgs.length];
+    const ex     = exercises[i] || {};
+    const action = ex.action || 'none';
+    const sugg   = (ex.suggested||'').trim();
+    const repTgt = (ex.repTarget||'').trim();
+    const noP    = ex.noProgress;
+
+    const wtBg    = (sugg && !noP) ? (PRINT_ACTION_FILL[action]||'#fff') : bg;
+    const wtColor = (sugg && !noP) ? (PRINT_ACTION_COLOR[action]||'#1a1a1a') : '#1a1a1a';
+    const wtText  = (sugg && !noP) ? pEsc(sugg) : '';
+    const repText = (repTgt && !noP) ? pEsc(repTgt) : '';
+    const isSer   = proto==='shoulder' && i===1;
+    const allWtBg = isSer ? '#1a1a1a' : bg;
+    const s1WtBg  = isSer && !(sugg && !noP) ? '#1a1a1a' : wtBg;
+    const divider = i < exNames.length-1 ? '<tr class="div-row"><td colspan="9"></td></tr>' : '';
+
+    return `<tr style="background:${bg};height:11mm">
+      <td class="ex-nm" style="font-size:7.5pt">${pEsc(exName)}</td>
+      <td class="wb" style="background:${s1WtBg}">
+        ${wtText ? `<span class="bv" style="color:${wtColor};font-size:7pt">${wtText}</span>` : ''}
+      </td>
+      <td class="rb" style="background:${bg}">
+        ${repText ? `<span class="bh" style="font-size:7pt">${repText}</span>` : ''}
+      </td>
+      <td class="wb" style="background:${allWtBg}"></td>
+      <td class="rb" style="background:${bg}"></td>
+      <td class="wb" style="background:${allWtBg}"></td>
+      <td class="rb" style="background:${bg}"></td>
+      <td class="xb"></td>
+      <td class="xb"></td>
+    </tr>${divider}`;
+  }).join('');
+
+  return `<table class="dt"><thead>${hdr}</thead><tbody>${rows}</tbody></table>`;
+}
+
+function buildAthletePage(ath, weekDate) {
+  const sheets = ath.sheets || [];
+  const protoMap = {};
+  for (const s of sheets) {
+    if (!protoMap[s.proto]) protoMap[s.proto] = {};
+    protoMap[s.proto][s.day] = s.exercises;
+  }
+  if (!Object.keys(protoMap).length) return '';
+
+  const sideParts = [];
+  for (const proto of Object.keys(protoMap)) {
+    const side = proto==='shoulder'  ? ath.shoulderSide
+               : proto==='patellar'  ? ath.kneeSide
+               : proto==='hamstring' ? ath.hamstringSide
+               : null;
+    if (side) {
+      const target = PRINT_SIDE_KEY[side];
+      const boxes = PRINT_SIDE_LABELS.map(lbl =>
+        `<span class="cb">${lbl===target?'☑':'☐'}</span>${lbl}`
+      ).join(' ');
+      sideParts.push(`<span class="sp">${PRINT_PROTO_TITLES[proto]}:</span> ${boxes}`);
+    }
+  }
+
+  const pageHdr = `<div class="ph">
+    <div class="phl">
+      <span class="an">${pEsc(ath.name)}</span>
+      <span class="wo">Week of: <strong>${pEsc(weekDate)}</strong></span>
+    </div>
+    <div class="phr">${sideParts.join(' &nbsp;·&nbsp; ')}</div>
+  </div>`;
+
+  const sections = Object.entries(protoMap).map(([proto, days]) => {
+    const color = PRINT_PROTO_COLORS[proto];
+    return `<div class="ps">
+      <div class="pt" style="background:${color}">${pEsc(PRINT_PROTO_TITLES[proto])}</div>
+      <div class="dr">
+        <div class="dc">${buildDayCol(proto, 1, days['1']||[])}</div>
+        <div class="dc">${buildDayCol(proto, 2, days['2']||[])}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div class="page">${pageHdr}${sections}</div>`;
+}
+
+function buildPrintHTML(athleteData, weekDate) {
+  const pages = athleteData.map(a => buildAthletePage(a, weekDate)).filter(Boolean).join('\n');
+
+  const legend = `<div class="leg"><strong>Key:</strong>
+    <span class="li" style="background:#e8f5d0;color:#2d5a18">↑ Increase</span>
+    <span class="li" style="background:#fef3d0;color:#7a4800">↑ Band</span>
+    <span class="li" style="background:#e8f0fe;color:#1a2a3a">→ Maintain</span>
+    <span class="li" style="background:#f5f5f5;color:#555">★ First</span>
+    <span style="color:#aaa;font-size:9px;font-style:italic">S1 Wt pre-filled · staff complete S2 &amp; S3</span>
+  </div>`;
+
+  const css = `@page{size:279.4mm 215.9mm landscape;margin:8mm}*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,Helvetica,sans-serif;font-size:9pt;color:#1a1a1a;background:#ddd;-webkit-print-color-adjust:exact;print-color-adjust:exact}.pbar{position:fixed;top:0;left:0;right:0;z-index:100;background:#BB0000;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:8px 18px;font-size:13px}.pbar-t{font-weight:600}.pbar-s{font-size:11px;opacity:.7;margin-top:1px}.pbtn{background:#fff;color:#BB0000;border:none;border-radius:5px;padding:6px 16px;font-size:13px;font-weight:700;cursor:pointer}.leg{max-width:263.4mm;margin:44px auto 8px;background:#fff;border-radius:4px;padding:5px 10px;font-size:9px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}.li{padding:2px 6px;border-radius:3px;font-weight:500;font-size:9px}.page{width:263.4mm;background:#fff;margin:0 auto 12px;page-break-after:always;break-after:page;border:1pt solid #BB0000;border-radius:3px;overflow:hidden}.page:last-child{page-break-after:avoid;break-after:avoid}.ph{display:flex;align-items:center;justify-content:space-between;padding:5px 9px;border-bottom:2pt solid #808080;background:#BB0000}.phl{display:flex;align-items:baseline;gap:12px}.an{font-size:13pt;font-weight:700;color:#fff;letter-spacing:-.01em}.wo{font-size:8pt;color:rgba(255,255,255,.8)}.wo strong{color:#fff}.phr{font-size:7.5pt;color:rgba(255,255,255,.85);text-align:right}.cb{color:#fff;font-weight:700;margin-right:2px}.sp{font-weight:600;color:#fff}.ps{border-bottom:1pt solid #808080}.ps:last-child{border-bottom:none}.pt{color:#fff;font-weight:700;font-size:8.5pt;padding:3px 7px;letter-spacing:.02em}.dr{display:grid;grid-template-columns:1fr 1fr;border-top:0.5pt solid #ddd}.dc{overflow:hidden}.dc:first-child{border-right:2pt solid #BB0000}.dt{width:100%;border-collapse:collapse;table-layout:fixed}.col-ex{width:20%}.col-wt{width:11%}.col-rp{width:11%}.col-rir{width:5.5%}.col-atc{width:6.5%}.day-hdr{color:#fff;text-align:left;padding:3px 6px;font-size:8pt;font-weight:700}.date-field{font-size:7pt;font-weight:400;opacity:.9;float:right}.date-line{color:rgba(255,255,255,.55);letter-spacing:.5px}.col-hdr-row th{background:#808080;color:#fff;text-align:center;padding:2px 1px;font-size:6.5pt;font-weight:600;border:0.5pt solid #666;height:7mm}.col-hdr-row .col-ex{background:#e8e8e8;color:#333;text-align:left;padding-left:5px}.ex-nm{font-weight:600;padding:2px 5px;vertical-align:middle;border:0.5pt solid #ddd;line-height:1.25}.wb,.rb{vertical-align:middle;border:0.5pt solid #ccc;text-align:center;padding:1px;position:relative}.wb{border-right:none}.rb{border-left:0.5pt dashed #bbb}.wb::after,.rb::after{content:'';display:block;margin:1px 2px;height:calc(100% - 4px);border:0.8pt solid #bbb;border-radius:1px;min-height:5mm}.xb{vertical-align:middle;border:0.5pt solid #ccc;position:relative}.xb::after{content:'';display:block;margin:1px 2px;height:calc(100% - 4px);border:0.8pt solid #bbb;border-radius:1px;min-height:5mm}.bv{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-weight:700;white-space:nowrap;z-index:1}.bh{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:#888;font-style:italic;white-space:nowrap;z-index:1}.div-row td{height:1px;padding:0;background:#e0e0e0;border:none}@media print{body{background:#fff}.pbar,.leg{display:none}.page{margin:0;border:none;border-radius:0}}@media screen{.page{box-shadow:0 2px 10px rgba(0,0,0,.18)}}`;
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Maintenance Sheets — ${pEsc(weekDate)}</title><style>${css}</style></head><body><div class="pbar"><div><div class="pbar-t">Maintenance Sheets — ${pEsc(weekDate)}</div><div class="pbar-s">File → Print · Landscape · Background graphics on · Save as PDF</div></div><button class="pbtn" onclick="window.print()">🖨 Print / Save as PDF</button></div>${legend}${pages}</body></html>`;
+}
+
+// ── CONFIG MODAL ──────────────────────────────────────────────
+function showConfig() { document.getElementById('config-modal').style.display = 'flex'; }
+function hideConfig() { document.getElementById('config-modal').style.display = 'none'; }
+
+// ── TOAST ─────────────────────────────────────────────────────
+function toast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type?' '+type:'');
+  setTimeout(()=>el.className='toast', 2400);
+}
+
+// ── REFRESH ───────────────────────────────────────────────────
+function refreshAll() {
+  renderLogAthletes();
+  renderAthletes();
+  renderDashboard();
+}
+
+// ── DRAG/DROP PDF ─────────────────────────────────────────────
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('drag')});
+dz.addEventListener('dragleave', ()=>dz.classList.remove('drag'));
+dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f?.type==='application/pdf'){const dt=new DataTransfer();dt.items.add(f);document.getElementById('pdf-input').files=dt.files;handlePdfUpload({target:{files:[f]}});}});
+
+// ── BOOT ──────────────────────────────────────────────────────
+window.onload = () => {
+  loadProgRules();
+  const t = new Date();
+  const dateStr = `${t.getMonth()+1}/${t.getDate()}`;
+  const dateEl = document.getElementById('log-date');
+  if(dateEl) dateEl.value = dateStr;
+
+  // Default week-of to next Monday
+  const wd = document.getElementById('week-date');
+  if (wd) {
+    const d = new Date();
+    const diff = d.getDay()===0 ? 1 : 8-d.getDay();
+    d.setDate(d.getDate()+diff);
+    wd.value = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+  }
+
+  initGoogleAuth();
+};
+</script>
+</body>
+</html>
